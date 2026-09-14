@@ -30,7 +30,7 @@ export const arabicDays = ["الأحد", "الاثنين", "الثلاثاء", "
 export type DaySlot = { date: string; dayName: string; dayNum: string; closed: boolean };
 
 function toArabicDigits(value: number | string) {
-  return String(value).replace(/\d/g, (d) => "٠١٢٣٤٥٦٧٨٩"[Number(d)]);
+  return String(value).replace(/\d/g, (d) => "٠١٢٣٤٥٦٧٨٩"[Number(d)]!);
 }
 
 export { toArabicDigits };
@@ -42,7 +42,7 @@ export function nextDays(count = 10): DaySlot[] {
     const d = new Date(base.getTime() + i * 86400000);
     out.push({
       date: d.toISOString().slice(0, 10),
-      dayName: arabicDays[d.getDay()],
+      dayName: arabicDays[d.getDay()]!,
       dayNum: toArabicDigits(d.getDate()),
       closed: d.getDay() === 5,
     });
