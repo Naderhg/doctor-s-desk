@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import { PageShell } from "@/components/page-shell";
 import { nextDays, slotsForDate, visitTypes } from "@/lib/clinic-data";
 
-type Search = { type?: string };
+type Search = { type?: string | undefined };
 
 export const Route = createFileRoute("/booking")({
   validateSearch: (search: Record<string, unknown>): Search => ({
