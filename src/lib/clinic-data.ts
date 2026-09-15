@@ -219,3 +219,225 @@ export const reviews = [
   { id: "r2", name: "أحمد ع.", text: "الحجز من الموقع سهل جداً والروشتة وصلتني على طول." },
   { id: "r3", name: "نهى س.", text: "متابعة ممتازة لحالة والدتي المزمنة على مدار سنة." },
 ];
+
+export type PatientVisit = {
+  id: string;
+  date: string;
+  time: string;
+  type: string;
+  complaint: string;
+  diagnosis: string;
+  notes?: string;
+  vitals?: { bp?: string; temp?: string; weight?: string };
+  prescription: { drug: string; dose: string; duration: string }[];
+  tests: string[];
+  followUp?: string;
+};
+
+export type PatientRecord = {
+  id: string;
+  name: string;
+  age: string;
+  gender: string;
+  phone: string;
+  bloodType: string;
+  chronic: string[];
+  allergies: string[];
+  medications: string[];
+  lastVisit: string;
+  visitsCount: string;
+  attachments: { id: string; name: string; date: string; size: string }[];
+  visits: PatientVisit[];
+};
+
+export const patientRecords: PatientRecord[] = [
+  {
+    id: "pt1",
+    name: "سارة عبدالله",
+    age: "٢٩ سنة",
+    gender: "أنثى",
+    phone: "٠١٠١١١١١١١١",
+    bloodType: "A+",
+    chronic: ["أنيميا نقص حديد"],
+    allergies: ["لا يوجد"],
+    medications: ["فيروجلوبين — كبسولة يومياً"],
+    lastVisit: "اليوم",
+    visitsCount: "٤",
+    attachments: [
+      { id: "s1", name: "صورة دم كاملة.pdf", date: "١٥ سبتمبر ٢٠٢٦", size: "٣١٠ ك.ب" },
+      { id: "s2", name: "نسبة الحديد.pdf", date: "٢ سبتمبر ٢٠٢٦", size: "٢٢٠ ك.ب" },
+    ],
+    visits: [
+      {
+        id: "v-s3",
+        date: "١٥ سبتمبر ٢٠٢٦",
+        time: "٠٩:٣٠ ص",
+        type: "إعادة كشف",
+        complaint: "إرهاق وشحوب مستمر",
+        diagnosis: "أنيميا نقص حديد — تحسن جزئي",
+        notes: "الهيموجلوبين ارتفع من ٩٫٢ إلى ١٠٫٨",
+        vitals: { bp: "١١٠/٧٠", temp: "٣٦٫٨", weight: "٥٨ كجم" },
+        prescription: [
+          { drug: "فيروجلوبين", dose: "كبسولة يومياً بعد الأكل", duration: "٦٠ يوم" },
+          { drug: "فيتامين سي ١٠٠٠", dose: "قرص يومياً", duration: "٣٠ يوم" },
+        ],
+        tests: ["صورة دم كاملة بعد شهرين"],
+        followUp: "١٥ نوفمبر ٢٠٢٦",
+      },
+      {
+        id: "v-s2",
+        date: "٢ سبتمبر ٢٠٢٦",
+        time: "١٠:٠٠ ص",
+        type: "إعادة كشف",
+        complaint: "دوخة عند الوقوف",
+        diagnosis: "أنيميا نقص حديد",
+        vitals: { bp: "١٠٠/٦٥", temp: "٣٦٫٦", weight: "٥٧ كجم" },
+        prescription: [{ drug: "فيروجلوبين", dose: "كبسولة يومياً", duration: "٣٠ يوم" }],
+        tests: ["نسبة الحديد والفيريتين"],
+      },
+      {
+        id: "v-s1",
+        date: "١٠ أغسطس ٢٠٢٦",
+        time: "١١:٣٠ ص",
+        type: "كشف جديد",
+        complaint: "إرهاق عام وصداع",
+        diagnosis: "اشتباه أنيميا",
+        vitals: { bp: "١٠٥/٧٠", temp: "٣٦٫٩", weight: "٥٧ كجم" },
+        prescription: [{ drug: "بانادول إكسترا", dose: "عند اللزوم", duration: "٧ أيام" }],
+        tests: ["صورة دم كاملة"],
+      },
+    ],
+  },
+  {
+    id: "pt2",
+    name: "محمد حسن",
+    age: "٤٧ سنة",
+    gender: "ذكر",
+    phone: "٠١٠٢٢٢٢٢٢٢٢",
+    bloodType: "O+",
+    chronic: ["ارتفاع ضغط الدم", "دهون مرتفعة"],
+    allergies: ["بنسلين"],
+    medications: ["كونكور ٥ مجم — قرص صباحاً"],
+    lastVisit: "٢ سبتمبر",
+    visitsCount: "١١",
+    attachments: [{ id: "m1", name: "رسم قلب.pdf", date: "٢ سبتمبر ٢٠٢٦", size: "٥١٠ ك.ب" }],
+    visits: [
+      {
+        id: "v-m2",
+        date: "٢ سبتمبر ٢٠٢٦",
+        time: "١٠:١٥ ص",
+        type: "إعادة كشف",
+        complaint: "متابعة ضغط الدم",
+        diagnosis: "ارتفاع ضغط الدم — منضبط",
+        vitals: { bp: "١٣٠/٨٥", temp: "٣٦٫٧", weight: "٨٨ كجم" },
+        prescription: [
+          { drug: "كونكور ٥ مجم", dose: "قرص صباحاً", duration: "٣٠ يوم" },
+          { drug: "أسبرين ٧٥ مجم", dose: "قرص بعد الغداء", duration: "٣٠ يوم" },
+        ],
+        tests: ["وظائف كلى", "دهون الدم"],
+        followUp: "٢ أكتوبر ٢٠٢٦",
+      },
+      {
+        id: "v-m1",
+        date: "٤ أغسطس ٢٠٢٦",
+        time: "١٢:٠٠ م",
+        type: "إعادة كشف",
+        complaint: "صداع خلفي متكرر",
+        diagnosis: "ارتفاع ضغط غير منضبط",
+        vitals: { bp: "١٥٠/٩٥", temp: "٣٦٫٥", weight: "٩٠ كجم" },
+        prescription: [{ drug: "كونكور ٥ مجم", dose: "قرص صباحاً", duration: "٣٠ يوم" }],
+        tests: ["رسم قلب"],
+      },
+    ],
+  },
+  {
+    id: "pt3",
+    name: "ليلى سمير",
+    age: "٣٦ سنة",
+    gender: "أنثى",
+    phone: "٠١٠٣٣٣٣٣٣٣٣",
+    bloodType: "B+",
+    chronic: ["قصور بسيط في الغدة الدرقية"],
+    allergies: ["لا يوجد"],
+    medications: ["إلتروكسين ٥٠ ميكروجرام"],
+    lastVisit: "٢٨ أغسطس",
+    visitsCount: "٦",
+    attachments: [{ id: "l1", name: "تحليل TSH.pdf", date: "٢٨ أغسطس ٢٠٢٦", size: "١٨٠ ك.ب" }],
+    visits: [
+      {
+        id: "v-l1",
+        date: "٢٨ أغسطس ٢٠٢٦",
+        time: "١١:٠٠ ص",
+        type: "استشارة فيديو",
+        complaint: "زيادة وزن وخمول",
+        diagnosis: "قصور بسيط في الغدة الدرقية",
+        vitals: { weight: "٧٢ كجم" },
+        prescription: [{ drug: "إلتروكسين ٥٠ ميكروجرام", dose: "قرص على الريق", duration: "٤٥ يوم" }],
+        tests: ["TSH", "T4 حر"],
+        followUp: "١٢ أكتوبر ٢٠٢٦",
+      },
+    ],
+  },
+  {
+    id: "pt4",
+    name: "عمر فاروق",
+    age: "٥٢ سنة",
+    gender: "ذكر",
+    phone: "٠١٠٤٤٤٤٤٤٤٤",
+    bloodType: "AB+",
+    chronic: ["سكري نوع ٢"],
+    allergies: ["سلفا"],
+    medications: ["جلوكوفاج ١٠٠٠ مجم"],
+    lastVisit: "١٥ أغسطس",
+    visitsCount: "٢",
+    attachments: [],
+    visits: [
+      {
+        id: "v-o1",
+        date: "١٥ أغسطس ٢٠٢٦",
+        time: "١٢:٠٠ م",
+        type: "كشف جديد",
+        complaint: "عطش وكثرة تبول",
+        diagnosis: "سكري نوع ٢ — بداية",
+        vitals: { bp: "١٣٥/٨٥", weight: "٩٥ كجم" },
+        prescription: [{ drug: "جلوكوفاج ١٠٠٠ مجم", dose: "قرص بعد الغداء", duration: "٣٠ يوم" }],
+        tests: ["سكر صائم", "HbA1c"],
+        followUp: "١٥ سبتمبر ٢٠٢٦",
+      },
+    ],
+  },
+  {
+    id: "pt5",
+    name: "هالة منصور",
+    age: "٣١ سنة",
+    gender: "أنثى",
+    phone: "٠١٠٥٥٥٥٥٥٥٥",
+    bloodType: "A-",
+    chronic: ["لا يوجد"],
+    allergies: ["لا يوجد"],
+    medications: ["لا يوجد"],
+    lastVisit: "٩ أغسطس",
+    visitsCount: "٨",
+    attachments: [],
+    visits: [
+      {
+        id: "v-h1",
+        date: "٩ أغسطس ٢٠٢٦",
+        time: "٠١:٣٠ م",
+        type: "إعادة كشف",
+        complaint: "التهاب حلق وحرارة",
+        diagnosis: "التهاب لوزتين بكتيري",
+        vitals: { temp: "٣٨٫٢", bp: "١١٥/٧٥" },
+        prescription: [
+          { drug: "أوجمنتين ١ جم", dose: "قرص كل ١٢ ساعة", duration: "٧ أيام" },
+          { drug: "بانادول إكسترا", dose: "عند اللزوم", duration: "٥ أيام" },
+        ],
+        tests: [],
+      },
+    ],
+  },
+];
+
+export function getPatientRecord(id: string) {
+  return patientRecords.find((p) => p.id === id);
+}
