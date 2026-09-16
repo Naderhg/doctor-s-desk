@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { PageShell } from "@/components/page-shell";
 import { patients } from "@/lib/clinic-data";
@@ -37,21 +37,35 @@ function DoctorPatients() {
               <th className="p-3 font-normal">الهاتف</th>
               <th className="p-3 font-normal">آخر زيارة</th>
               <th className="p-3 font-normal">الزيارات</th>
+              <th className="p-3 font-normal"></th>
             </tr>
           </thead>
           <tbody>
             {list.map((p) => (
-              <tr key={p.id} className="border-t border-border">
-                <td className="p-3 font-semibold">{p.name}</td>
+              <tr key={p.id} className="border-t border-border transition-colors hover:bg-foreground/5">
+                <td className="p-3 font-semibold">
+                  <Link to="/doctor/patient/$id" params={{ id: p.id }} className="hover:text-primary">
+                    {p.name}
+                  </Link>
+                </td>
                 <td className="p-3 text-muted-foreground">{p.age}</td>
                 <td className="p-3 text-muted-foreground">{p.phone}</td>
                 <td className="p-3 text-muted-foreground">{p.lastVisit}</td>
                 <td className="p-3">{p.visits}</td>
+                <td className="p-3">
+                  <Link
+                    to="/doctor/patient/$id"
+                    params={{ id: p.id }}
+                    className="btn-ghost inline-block px-3 py-1.5 text-xs"
+                  >
+                    فتح الملف
+                  </Link>
+                </td>
               </tr>
             ))}
             {list.length === 0 ? (
               <tr>
-                <td colSpan={5} className="p-6 text-center text-muted-foreground">
+                <td colSpan={6} className="p-6 text-center text-muted-foreground">
                   لا توجد نتائج مطابقة.
                 </td>
               </tr>
