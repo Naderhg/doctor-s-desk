@@ -9,6 +9,7 @@ const tabs = [
   { to: "/doctor/schedule", label: "الجدول والمواعيد" },
   { to: "/doctor/patients", label: "المرضى" },
   { to: "/doctor/visit", label: "تسجيل زيارة" },
+  { to: "/doctor/reports", label: "التقرير الشهري" },
   { to: "/doctor/settings", label: "الإعدادات" },
 ] as const;
 
