@@ -229,6 +229,7 @@ export type PatientVisit = {
   diagnosis: string;
   notes?: string;
   vitals?: { bp?: string; temp?: string; weight?: string };
+  labs?: { sugar?: string; hb?: string };
   prescription: { drug: string; dose: string; duration: string }[];
   tests: string[];
   followUp?: string;
@@ -277,6 +278,7 @@ export const patientRecords: PatientRecord[] = [
         diagnosis: "أنيميا نقص حديد — تحسن جزئي",
         notes: "الهيموجلوبين ارتفع من ٩٫٢ إلى ١٠٫٨",
         vitals: { bp: "١١٠/٧٠", temp: "٣٦٫٨", weight: "٥٨ كجم" },
+        labs: { hb: "١٠٫٨", sugar: "٩٥" },
         prescription: [
           { drug: "فيروجلوبين", dose: "كبسولة يومياً بعد الأكل", duration: "٦٠ يوم" },
           { drug: "فيتامين سي ١٠٠٠", dose: "قرص يومياً", duration: "٣٠ يوم" },
@@ -292,6 +294,7 @@ export const patientRecords: PatientRecord[] = [
         complaint: "دوخة عند الوقوف",
         diagnosis: "أنيميا نقص حديد",
         vitals: { bp: "١٠٠/٦٥", temp: "٣٦٫٦", weight: "٥٧ كجم" },
+        labs: { hb: "٩٫٦", sugar: "٩٢" },
         prescription: [{ drug: "فيروجلوبين", dose: "كبسولة يومياً", duration: "٣٠ يوم" }],
         tests: ["نسبة الحديد والفيريتين"],
       },
@@ -303,6 +306,7 @@ export const patientRecords: PatientRecord[] = [
         complaint: "إرهاق عام وصداع",
         diagnosis: "اشتباه أنيميا",
         vitals: { bp: "١٠٥/٧٠", temp: "٣٦٫٩", weight: "٥٧ كجم" },
+        labs: { hb: "٩٫٢", sugar: "٩٠" },
         prescription: [{ drug: "بانادول إكسترا", dose: "عند اللزوم", duration: "٧ أيام" }],
         tests: ["صورة دم كاملة"],
       },
@@ -330,6 +334,7 @@ export const patientRecords: PatientRecord[] = [
         complaint: "متابعة ضغط الدم",
         diagnosis: "ارتفاع ضغط الدم — منضبط",
         vitals: { bp: "١٣٠/٨٥", temp: "٣٦٫٧", weight: "٨٨ كجم" },
+        labs: { sugar: "١٠٥" },
         prescription: [
           { drug: "كونكور ٥ مجم", dose: "قرص صباحاً", duration: "٣٠ يوم" },
           { drug: "أسبرين ٧٥ مجم", dose: "قرص بعد الغداء", duration: "٣٠ يوم" },
@@ -345,6 +350,7 @@ export const patientRecords: PatientRecord[] = [
         complaint: "صداع خلفي متكرر",
         diagnosis: "ارتفاع ضغط غير منضبط",
         vitals: { bp: "١٥٠/٩٥", temp: "٣٦٫٥", weight: "٩٠ كجم" },
+        labs: { sugar: "١١٢" },
         prescription: [{ drug: "كونكور ٥ مجم", dose: "قرص صباحاً", duration: "٣٠ يوم" }],
         tests: ["رسم قلب"],
       },
@@ -441,3 +447,182 @@ export const patientRecords: PatientRecord[] = [
 export function getPatientRecord(id: string) {
   return patientRecords.find((p) => p.id === id);
 }
+
+export function getPatientRecordByName(name: string) {
+  return patientRecords.find((p) => p.name === name);
+}
+
+/** يحوّل الأرقام العربية (مع الفاصلة ٫) إلى رقم إنجليزي */
+export function fromArabicDigits(value: string): number | null {
+  const normalized = value
+    .replace(/[٠-٩]/g, (d) => String("٠١٢٣٤٥٦٧٨٩".indexOf(d)))
+    .replace(/٫/g, ".")
+    .replace(/[^\d.]/g, " ")
+    .trim()
+    .split(/\s+/)[0];
+  if (!normalized) return null;
+  const n = Number(normalized);
+  return Number.isFinite(n) ? n : null;
+}
+
+export type MetricKey = "bp" | "weight" | "sugar" | "hb";
+
+export const metricMeta: Record<MetricKey, { label: string; unit: string; normal: [number, number] }> = {
+  bp: { label: "الضغط الانقباضي", unit: "mmHg", normal: [90, 130] },
+  weight: { label: "الوزن", unit: "كجم", normal: [50, 90] },
+  sugar: { label: "السكر الصائم", unit: "mg/dL", normal: [70, 100] },
+  hb: { label: "الهيموجلوبين", unit: "g/dL", normal: [12, 16] },
+};
+
+export type MetricPoint = { date: string; value: number };
+
+export function metricSeries(visits: PatientVisit[], key: MetricKey): MetricPoint[] {
+  const raw = [...visits].reverse().map((v) => {
+    const source =
+      key === "bp" ? v.vitals?.bp : key === "weight" ? v.vitals?.weight : key === "sugar" ? v.labs?.sugar : v.labs?.hb;
+    const value = source ? fromArabicDigits(source) : null;
+    return value === null ? null : { date: v.date, value };
+  });
+  return raw.filter((p): p is MetricPoint => p !== null);
+}
+
+/** تعارضات دوائية مبسطة (عرض تجريبي) */
+export const drugInteractions: { a: string; b: string; note: string; level: "خطر" | "تحذير" }[] = [
+  { a: "أسبرين", b: "وارفارين", note: "زيادة كبيرة في خطر النزيف.", level: "خطر" },
+  { a: "كونكور", b: "فيراباميل", note: "هبوط شديد في النبض وضغط الدم.", level: "خطر" },
+  { a: "نكسيوم", b: "بلافكس", note: "يقلل فاعلية بلافكس.", level: "تحذير" },
+  { a: "إلتروكسين", b: "فيروجلوبين", note: "الحديد يقلل امتصاص إلتروكسين — افصل ٤ ساعات.", level: "تحذير" },
+  { a: "جلوكوفاج", b: "بريدنيزولون", note: "الكورتيزون يرفع السكر ويقلل فاعلية العلاج.", level: "تحذير" },
+  { a: "أوجمنتين", b: "ميثوتركسيت", note: "ارتفاع سمية الميثوتركسيت.", level: "خطر" },
+];
+
+/** ربط اسم الدواء بمجموعة الحساسية */
+export const allergyGroups: { allergy: string; drugs: string[] }[] = [
+  { allergy: "بنسلين", drugs: ["أوجمنتين", "أموكسيسيلين", "يونيكتام", "هاي بيوتك", "بنسلين"] },
+  { allergy: "سلفا", drugs: ["سبترين", "باكتريم", "سلفا"] },
+  { allergy: "أسبرين", drugs: ["أسبرين", "بروفين", "كتافلام"] },
+];
+
+export type RxAlert = { level: "خطر" | "تحذير"; title: string; detail: string };
+
+export function checkPrescription(
+  drugs: string[],
+  patient?: { allergies: string[]; medications: string[] },
+): RxAlert[] {
+  const alerts: RxAlert[] = [];
+  const clean = drugs.map((d) => d.trim()).filter(Boolean);
+  const has = (list: string[], token: string) => list.some((x) => x.includes(token) || token.includes(x));
+
+  // حساسية
+  for (const drug of clean) {
+    for (const g of allergyGroups) {
+      if (!patient?.allergies.some((a) => a.includes(g.allergy))) continue;
+      if (g.drugs.some((d) => drug.includes(d))) {
+        alerts.push({
+          level: "خطر",
+          title: `حساسية ${g.allergy}`,
+          detail: `المريض لديه حساسية من ${g.allergy} — «${drug}» من نفس المجموعة.`,
+        });
+      }
+    }
+  }
+
+  // تعارض بين أدوية الروشتة أو مع الأدوية الحالية
+  const current = patient?.medications ?? [];
+  const all = [...clean, ...current];
+  for (const rule of drugInteractions) {
+    const hitA = has(all, rule.a);
+    const hitB = has(all, rule.b);
+    const inRx = clean.some((d) => d.includes(rule.a) || d.includes(rule.b));
+    if (hitA && hitB && inRx) {
+      alerts.push({
+        level: rule.level,
+        title: `تعارض: ${rule.a} + ${rule.b}`,
+        detail: rule.note,
+      });
+    }
+  }
+
+  // تكرار نفس الدواء
+  const seen = new Set<string>();
+  for (const d of clean) {
+    const key = d.split(" ")[0]!;
+    if (seen.has(key)) {
+      alerts.push({ level: "تحذير", title: "دواء مكرر", detail: `«${d}» مكتوب أكثر من مرة في الروشتة.` });
+    }
+    seen.add(key);
+  }
+
+  return alerts;
+}
+
+/** التقرير الشهري (بيانات تجريبية) */
+export type MonthReport = {
+  id: string;
+  label: string;
+  revenue: number;
+  deposits: number;
+  booked: number;
+  attended: number;
+  cancelled: number;
+  noShow: number;
+  newPatients: number;
+  diagnoses: { name: string; count: number }[];
+};
+
+export const monthlyReports: MonthReport[] = [
+  {
+    id: "2026-09",
+    label: "سبتمبر ٢٠٢٦",
+    revenue: 48750,
+    deposits: 12300,
+    booked: 168,
+    attended: 141,
+    cancelled: 13,
+    noShow: 14,
+    newPatients: 29,
+    diagnoses: [
+      { name: "ارتفاع ضغط الدم", count: 34 },
+      { name: "أنيميا نقص حديد", count: 22 },
+      { name: "سكري نوع ٢", count: 18 },
+      { name: "قصور الغدة الدرقية", count: 12 },
+      { name: "التهاب لوزتين", count: 9 },
+    ],
+  },
+  {
+    id: "2026-08",
+    label: "أغسطس ٢٠٢٦",
+    revenue: 41200,
+    deposits: 10100,
+    booked: 152,
+    attended: 124,
+    cancelled: 11,
+    noShow: 17,
+    newPatients: 24,
+    diagnoses: [
+      { name: "ارتفاع ضغط الدم", count: 28 },
+      { name: "نزلات معوية", count: 21 },
+      { name: "أنيميا نقص حديد", count: 17 },
+      { name: "سكري نوع ٢", count: 14 },
+      { name: "التهاب جيوب أنفية", count: 8 },
+    ],
+  },
+  {
+    id: "2026-07",
+    label: "يوليو ٢٠٢٦",
+    revenue: 37900,
+    deposits: 9400,
+    booked: 139,
+    attended: 112,
+    cancelled: 12,
+    noShow: 15,
+    newPatients: 19,
+    diagnoses: [
+      { name: "ارتفاع ضغط الدم", count: 25 },
+      { name: "سكري نوع ٢", count: 16 },
+      { name: "صداع نصفي", count: 13 },
+      { name: "أنيميا نقص حديد", count: 11 },
+      { name: "التهاب لوزتين", count: 7 },
+    ],
+  },
+];
