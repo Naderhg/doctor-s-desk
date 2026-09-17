@@ -1,6 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
 import { PageShell } from "@/components/page-shell";
-import { clinic, prescriptions } from "@/lib/clinic-data";
+import { AuthGate } from "@/components/auth-gate";
+import { getPrescriptions } from "@/lib/patient";
 
 export const Route = createFileRoute("/prescriptions")({
   head: () => ({
@@ -16,7 +18,22 @@ export const Route = createFileRoute("/prescriptions")({
 
 function PrescriptionsPage() {
   return (
+    <AuthGate>
+      <PrescriptionsContent />
+    </AuthGate>
+  );
+}
+
+function PrescriptionsContent() {
+  const rxQuery = useQuery({ queryKey: ["prescriptions"], queryFn: getPrescriptions });
+  const prescriptions = rxQuery.data?.prescriptions ?? [];
+
+  return (
     <PageShell eyebrow="حسابي" title="الروشتات" description="كل روشتة كتبها الدكتور بعد الزيارة، جاهزة للطباعة.">
+      {rxQuery.isLoading ? <p className="mb-4 text-sm text-muted-foreground">جارٍ التحميل...</p> : null}
+      {!rxQuery.isLoading && prescriptions.length === 0 ? (
+        <p className="text-sm text-muted-foreground">لا توجد روشتات بعد. تظهر هنا بعد ما الدكتور يكتبها.</p>
+      ) : null}
       <div className="space-y-5">
         {prescriptions.map((rx) => (
           <article key={rx.id} className="glass rounded-3xl p-6">
@@ -24,7 +41,7 @@ function PrescriptionsPage() {
               <div>
                 <p className="font-display text-lg">{rx.diagnosis}</p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  {clinic.doctorName} · {rx.date} · رقم {rx.id}
+                  {rx.doctorName} · {rx.date} · رقم {rx.id.slice(0, 8)}
                 </p>
               </div>
               <div className="flex gap-2">

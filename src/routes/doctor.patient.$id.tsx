@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
 import { PageShell } from "@/components/page-shell";
-import { getPatientRecord } from "@/lib/clinic-data";
+import { getDoctorPatient } from "@/lib/doctor";
 
 export const Route = createFileRoute("/doctor/patient/$id")({
   head: () => ({
@@ -20,7 +21,16 @@ function Tag({ children }: { children: React.ReactNode }) {
 
 function PatientFile() {
   const { id } = Route.useParams();
-  const p = getPatientRecord(id);
+  const file = useQuery({ queryKey: ["doctor-patient", id], queryFn: () => getDoctorPatient(id) });
+  const p = file.data?.patient;
+
+  if (file.isLoading) {
+    return (
+      <PageShell title="ملف المريض" description="جارٍ التحميل...">
+        <p className="text-sm text-muted-foreground">جارٍ جلب الملف الطبي.</p>
+      </PageShell>
+    );
+  }
 
   if (!p) {
     return (
@@ -114,7 +124,9 @@ function PatientFile() {
                         {v.date} · {v.time} · {v.type}
                       </p>
                     </div>
-                    {v.followUp ? <span className="chip">متابعة: {v.followUp}</span> : null}
+                    <Link to="/doctor/visit" search={{ patientId: p.id }} className="chip">
+                      زيارة جديدة
+                    </Link>
                   </header>
 
                   <p className="mb-3 text-sm">

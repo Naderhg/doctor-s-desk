@@ -1,7 +1,8 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { PageShell } from "@/components/page-shell";
-import { nextDays, slotsForDate, todaySchedule } from "@/lib/clinic-data";
+import { getDoctorSchedule, updateAppointmentStatus } from "@/lib/doctor";
 
 export const Route = createFileRoute("/doctor/schedule")({
   head: () => ({
@@ -15,10 +16,26 @@ export const Route = createFileRoute("/doctor/schedule")({
   component: DoctorSchedule,
 });
 
+function todayYmd() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 function DoctorSchedule() {
-  const days = nextDays(8);
-  const [date, setDate] = useState(days[0]!.date);
-  const slots = slotsForDate(date);
+  const [date, setDate] = useState(todayYmd);
+  const queryClient = useQueryClient();
+  const schedule = useQuery({ queryKey: ["doctor-schedule", date], queryFn: () => getDoctorSchedule(date) });
+  const status = useMutation({
+    mutationFn: ({ id, next }: { id: string; next: "confirmed" | "cancelled" | "completed" | "no_show" }) =>
+      updateAppointmentStatus(id, next),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["doctor-schedule"] });
+      await queryClient.invalidateQueries({ queryKey: ["doctor-overview"] });
+    },
+  });
+  const days = schedule.data?.days ?? [];
+  const slots = schedule.data?.slots ?? [];
+  const appointments = schedule.data?.appointments ?? [];
 
   return (
     <PageShell eyebrow="لوحة التحكم" title="الجدول والمواعيد" description="اختر اليوم لعرض المواعيد وحالتها.">
@@ -41,15 +58,44 @@ function DoctorSchedule() {
       <div className="grid gap-5 lg:grid-cols-2">
         <div className="glass rounded-3xl p-6">
           <h2 className="font-display text-lg">مواعيد اليوم المحجوزة</h2>
+          {schedule.isLoading ? <p className="mt-4 text-sm text-muted-foreground">جارٍ التحميل...</p> : null}
           <ul className="mt-4 space-y-2 text-sm">
-            {todaySchedule.map((a) => (
-              <li key={a.id} className="glass-soft flex flex-wrap items-center justify-between gap-2 rounded-2xl p-4">
-                <span className="font-semibold">{a.time}</span>
-                <span>{a.patient}</span>
-                <span className="text-muted-foreground">{a.type}</span>
-                <span className="chip">{a.status}</span>
+            {appointments.map((a) => (
+              <li key={a.id} className="glass-soft space-y-3 rounded-2xl p-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="font-semibold">{a.time}</span>
+                  <Link to="/doctor/patient/$id" params={{ id: a.patientId }} className="hover:text-primary">
+                    {a.patient}
+                  </Link>
+                  <span className="text-muted-foreground">{a.type}</span>
+                  <span className="chip">{a.status}</span>
+                </div>
+                {a.statusKey === "cancelled" || a.statusKey === "completed" ? null : (
+                  <div className="flex flex-wrap gap-2">
+                    {a.statusKey === "pending_payment" ? (
+                      <button className="btn-ghost px-3 py-1.5 text-xs" onClick={() => status.mutate({ id: a.id, next: "confirmed" })}>
+                        تأكيد
+                      </button>
+                    ) : null}
+                    <button className="btn-ghost px-3 py-1.5 text-xs" onClick={() => status.mutate({ id: a.id, next: "completed" })}>
+                      حضور
+                    </button>
+                    <button className="btn-ghost px-3 py-1.5 text-xs" onClick={() => status.mutate({ id: a.id, next: "no_show" })}>
+                      غياب
+                    </button>
+                    <button className="btn-ghost px-3 py-1.5 text-xs" onClick={() => status.mutate({ id: a.id, next: "cancelled" })}>
+                      إلغاء
+                    </button>
+                    <Link to="/doctor/visit" search={{ patientId: a.patientId, appointmentId: a.id }} className="btn-primary px-3 py-1.5 text-xs">
+                      تسجيل زيارة
+                    </Link>
+                  </div>
+                )}
               </li>
             ))}
+            {!schedule.isLoading && appointments.length === 0 ? (
+              <li className="text-sm text-muted-foreground">لا توجد حجوزات في هذا اليوم.</li>
+            ) : null}
           </ul>
         </div>
 

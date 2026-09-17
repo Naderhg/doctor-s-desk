@@ -1,10 +1,18 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { PageShell } from "@/components/page-shell";
-import { patients, savedDrugs } from "@/lib/clinic-data";
+import { ApiError } from "@/lib/api";
+import { createVisit, getDoctorPatients } from "@/lib/doctor";
+
+type Search = { patientId?: string; appointmentId?: string };
 
 export const Route = createFileRoute("/doctor/visit")({
+  validateSearch: (search: Record<string, unknown>): Search => ({
+    patientId: typeof search.patientId === "string" ? search.patientId : undefined,
+    appointmentId: typeof search.appointmentId === "string" ? search.appointmentId : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "تسجيل زيارة — لوحة الدكتور" },
@@ -19,10 +27,36 @@ export const Route = createFileRoute("/doctor/visit")({
 type Item = { drug: string; dose: string; duration: string };
 
 function DoctorVisit() {
-  const [patient, setPatient] = useState(patients[0]!.name);
+  const search = Route.useSearch();
+  const queryClient = useQueryClient();
+  const patientsQuery = useQuery({ queryKey: ["doctor-patients", ""], queryFn: () => getDoctorPatients("") });
+  const patients = patientsQuery.data?.patients ?? [];
+  const [patientId, setPatientId] = useState(search.patientId ?? "");
   const [diagnosis, setDiagnosis] = useState("");
+  const [complaint, setComplaint] = useState("");
   const [tests, setTests] = useState("");
   const [items, setItems] = useState<Item[]>([{ drug: "", dose: "", duration: "" }]);
+
+  useEffect(() => {
+    if (!patientId && patients[0]) setPatientId(patients[0].id);
+  }, [patients, patientId]);
+
+  const save = useMutation({
+    mutationFn: createVisit,
+    onSuccess: async () => {
+      toast.success("تم حفظ الزيارة والروشتة");
+      await queryClient.invalidateQueries({ queryKey: ["doctor-overview"] });
+      await queryClient.invalidateQueries({ queryKey: ["doctor-patients"] });
+      await queryClient.invalidateQueries({ queryKey: ["prescriptions"] });
+      setDiagnosis("");
+      setComplaint("");
+      setTests("");
+      setItems([{ drug: "", dose: "", duration: "" }]);
+    },
+    onError: (err) => toast.error(err instanceof ApiError ? err.message : "تعذّر حفظ الزيارة"),
+  });
+
+  const selected = patients.find((p) => p.id === patientId);
 
   const update = (i: number, key: keyof Item, value: string) =>
     setItems((prev) => prev.map((it, idx) => (idx === i ? { ...it, [key]: value } : it)));
@@ -33,23 +67,42 @@ function DoctorVisit() {
         className="grid gap-5 lg:grid-cols-3"
         onSubmit={(e) => {
           e.preventDefault();
-          toast.success("تم حفظ الزيارة والروشتة (عرض تجريبي)");
+          if (!patientId) return;
+          save.mutate({
+            patientId,
+            appointmentId: search.appointmentId ?? null,
+            complaint,
+            diagnosis,
+            items,
+            tests: tests.split(/[،,]/).map((t) => t.trim()).filter(Boolean),
+          });
         }}
       >
         <div className="glass space-y-4 rounded-3xl p-6 lg:col-span-2">
           <div>
             <label className="mb-2 block text-xs text-muted-foreground">المريض</label>
             <select
-              value={patient}
-              onChange={(e) => setPatient(e.target.value)}
+              value={patientId}
+              onChange={(e) => setPatientId(e.target.value)}
               className="glass-soft w-full rounded-2xl px-4 py-3 text-sm outline-none"
             >
               {patients.map((p) => (
-                <option key={p.id} value={p.name}>
+                <option key={p.id} value={p.id}>
                   {p.name}
                 </option>
               ))}
             </select>
+          </div>
+
+          <div>
+            <label className="mb-2 block text-xs text-muted-foreground">الشكوى</label>
+            <textarea
+              value={complaint}
+              onChange={(e) => setComplaint(e.target.value)}
+              rows={2}
+              className="glass-soft w-full rounded-2xl px-4 py-3 text-sm outline-none"
+              placeholder="شكوى المريض"
+            />
           </div>
 
           <div>
@@ -91,7 +144,7 @@ function DoctorVisit() {
               ))}
             </div>
             <datalist id="saved-drugs">
-              {savedDrugs.map((d) => (
+              {["كونكور ٥ مجم", "أسبرين ٧٥ مجم", "إلتروكسين ٥٠ ميكروجرام", "أوجمنتين ١ جم", "بانادول إكسترا", "نكسيوم ٤٠ مجم"].map((d) => (
                 <option key={d} value={d} />
               ))}
             </datalist>
@@ -114,14 +167,14 @@ function DoctorVisit() {
             />
           </div>
 
-          <button type="submit" className="btn-primary px-5 py-3 text-sm">
-            حفظ الزيارة والروشتة
+          <button type="submit" className="btn-primary px-5 py-3 text-sm" disabled={save.isPending || !patientId}>
+            {save.isPending ? "جارٍ الحفظ..." : "حفظ الزيارة والروشتة"}
           </button>
         </div>
 
         <aside className="glass h-fit rounded-3xl p-6">
           <h2 className="font-display text-lg">معاينة الروشتة</h2>
-          <p className="mt-2 text-xs text-muted-foreground">{patient}</p>
+          <p className="mt-2 text-xs text-muted-foreground">{selected?.name ?? "اختر مريضاً"}</p>
           <p className="mt-3 text-sm">{diagnosis || "— لم يُكتب تشخيص بعد"}</p>
           <ul className="mt-4 space-y-2 text-sm">
             {items
@@ -137,11 +190,15 @@ function DoctorVisit() {
           </ul>
           {tests ? (
             <div className="mt-4 flex flex-wrap gap-2">
-              {tests.split("،").flatMap((t) => t.split(",")).filter((t) => t.trim()).map((t) => (
-                <span key={t} className="chip">
-                  {t.trim()}
-                </span>
-              ))}
+              {tests
+                .split("،")
+                .flatMap((t) => t.split(","))
+                .filter((t) => t.trim())
+                .map((t) => (
+                  <span key={t} className="chip">
+                    {t.trim()}
+                  </span>
+                ))}
             </div>
           ) : null}
         </aside>

@@ -1,7 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { PageShell } from "@/components/page-shell";
-import { monthlyReports, toArabicDigits } from "@/lib/clinic-data";
+import { getDoctorReports } from "@/lib/doctor";
+
+function toArabicDigits(value: number | string) {
+  return String(value).replace(/\d/g, (d) => "٠١٢٣٤٥٦٧٨٩"[Number(d)]!);
+}
 
 export const Route = createFileRoute("/doctor/reports")({
   head: () => ({
@@ -36,12 +41,22 @@ function Stat({ label, value, hint, tone }: { label: string; value: string; hint
 }
 
 function DoctorReports() {
-  const [id, setId] = useState(monthlyReports[0]!.id);
-  const r = monthlyReports.find((m) => m.id === id)!;
-  const prev = monthlyReports[monthlyReports.findIndex((m) => m.id === id) + 1];
-
-  const revenueDelta = prev ? Math.round(((r.revenue - prev.revenue) / prev.revenue) * 100) : null;
-  const maxDx = Math.max(...r.diagnoses.map((d) => d.count));
+  const [id, setId] = useState<string | undefined>(undefined);
+  const reports = useQuery({
+    queryKey: ["doctor-reports", id],
+    queryFn: () => getDoctorReports(id ?? undefined),
+  });
+  const months = reports.data?.months ?? [];
+  const r = reports.data?.report;
+  if (!r) {
+    return (
+      <PageShell eyebrow="لوحة التحكم" title="التقرير الشهري" description="الإيرادات، نسب الحضور والغياب، وأكثر التشخيصات تكراراً.">
+        <p className="text-sm text-muted-foreground">جارٍ التحميل...</p>
+      </PageShell>
+    );
+  }
+  const revenueDelta = null;
+  const maxDx = Math.max(1, ...r.diagnoses.map((d) => d.count));
 
   return (
     <PageShell
@@ -50,12 +65,12 @@ function DoctorReports() {
       description="الإيرادات، نسب الحضور والغياب، وأكثر التشخيصات تكراراً."
     >
       <div className="mb-5 flex flex-wrap gap-2">
-        {monthlyReports.map((m) => (
+        {months.map((m) => (
           <button
             key={m.id}
             type="button"
             onClick={() => setId(m.id)}
-            className={m.id === id ? "btn-primary px-4 py-2 text-sm" : "btn-ghost px-4 py-2 text-sm"}
+            className={m.id === r.id ? "btn-primary px-4 py-2 text-sm" : "btn-ghost px-4 py-2 text-sm"}
           >
             {m.label}
           </button>

@@ -1,7 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { PageShell } from "@/components/page-shell";
-import { patients } from "@/lib/clinic-data";
+import { getDoctorPatients } from "@/lib/doctor";
 
 export const Route = createFileRoute("/doctor/patients")({
   head: () => ({
@@ -17,7 +18,8 @@ export const Route = createFileRoute("/doctor/patients")({
 
 function DoctorPatients() {
   const [q, setQ] = useState("");
-  const list = patients.filter((p) => p.name.includes(q.trim()) || p.phone.includes(q.trim()));
+  const patients = useQuery({ queryKey: ["doctor-patients", q], queryFn: () => getDoctorPatients(q) });
+  const list = patients.data?.patients ?? [];
 
   return (
     <PageShell eyebrow="لوحة التحكم" title="المرضى" description="ابحث بالاسم أو رقم الهاتف.">

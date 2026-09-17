@@ -1,16 +1,28 @@
-import { Link } from "@tanstack/react-router";
-import { clinic } from "@/lib/clinic-data";
-
-const links = [
-  { to: "/", label: "الرئيسية" },
-  { to: "/booking", label: "احجز" },
-  { to: "/appointments", label: "مواعيدي" },
-  { to: "/medical-file", label: "ملفي الطبي" },
-  { to: "/prescriptions", label: "الروشتات" },
-  { to: "/doctor", label: "لوحة الدكتور" },
-] as const;
+import { Link, useNavigate } from "@tanstack/react-router";
+import { useAuth } from "@/hooks/use-auth";
+import { useClinic } from "@/hooks/use-clinic";
 
 export function SiteHeader() {
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  const { data } = useClinic();
+  const clinicName = data?.clinic.clinicName ?? "عيادة د. كريم النجار";
+  const specialty = data?.clinic.specialty ?? "باطنية عامة · استشارات ومتابعة";
+  const isDoctor = user?.role === "doctor";
+  const links = isDoctor
+    ? ([
+        { to: "/doctor", label: "لوحة الدكتور" },
+        { to: "/doctor/schedule", label: "الجدول" },
+        { to: "/doctor/patients", label: "المرضى" },
+      ] as const)
+    : ([
+        { to: "/", label: "الرئيسية" },
+        { to: "/booking", label: "احجز" },
+        { to: "/appointments", label: "مواعيدي" },
+        { to: "/medical-file", label: "ملفي الطبي" },
+        { to: "/prescriptions", label: "الروشتات" },
+      ] as const);
+
   return (
     <header className="relative z-20 px-4 py-5 sm:px-8">
       <div className="glass flex items-center justify-between gap-4 rounded-2xl px-5 py-4">
@@ -19,8 +31,8 @@ export function SiteHeader() {
             د
           </span>
           <span className="hidden leading-tight sm:block">
-            <span className="block font-display font-bold">{clinic.clinicName}</span>
-            <span className="block text-xs text-muted-foreground">{clinic.specialty}</span>
+            <span className="block font-display font-bold">{clinicName}</span>
+            <span className="block text-xs text-muted-foreground">{specialty}</span>
           </span>
         </Link>
 
@@ -39,12 +51,34 @@ export function SiteHeader() {
         </nav>
 
         <div className="flex items-center gap-2">
-          <Link to="/auth" className="px-3 py-2 text-sm text-muted-foreground hover:text-foreground">
-            دخول
-          </Link>
-          <Link to="/booking" className="btn-primary px-4 py-2.5 text-sm">
-            احجز الآن
-          </Link>
+          {user ? (
+            <>
+              <span className="hidden max-w-[9rem] truncate text-sm text-muted-foreground sm:inline">{user.name}</span>
+              <button
+                type="button"
+                className="px-3 py-2 text-sm text-muted-foreground hover:text-foreground"
+                onClick={async () => {
+                  await logout();
+                  await navigate({ to: "/" });
+                }}
+              >
+                خروج
+              </button>
+            </>
+          ) : (
+            <Link to="/auth" className="px-3 py-2 text-sm text-muted-foreground hover:text-foreground">
+              دخول
+            </Link>
+          )}
+          {isDoctor ? (
+            <Link to="/doctor" className="btn-primary px-4 py-2.5 text-sm">
+              اللوحة
+            </Link>
+          ) : (
+            <Link to="/booking" className="btn-primary px-4 py-2.5 text-sm">
+              احجز الآن
+            </Link>
+          )}
         </div>
       </div>
 

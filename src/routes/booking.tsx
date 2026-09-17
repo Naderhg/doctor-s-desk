@@ -1,7 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 import { PageShell } from "@/components/page-shell";
-import { nextDays, slotsForDate, visitTypes } from "@/lib/clinic-data";
+import { AuthGate } from "@/components/auth-gate";
+import { useAuth } from "@/hooks/use-auth";
+import { useClinic } from "@/hooks/use-clinic";
+import { ApiError } from "@/lib/api";
+import { bookAppointment, getDays, getSlots } from "@/lib/patient";
 
 type Search = { type?: string | undefined };
 
@@ -23,19 +28,54 @@ export const Route = createFileRoute("/booking")({
 const steps = ["نوع الكشف", "اليوم", "الموعد", "التأكيد"];
 
 function BookingPage() {
+  const { user } = useAuth();
+  if (!user) {
+    return (
+      <AuthGate>
+        <div />
+      </AuthGate>
+    );
+  }
+  return <BookingForm />;
+}
+
+function BookingForm() {
   const search = Route.useSearch();
-  const days = useMemo(() => nextDays(10), []);
+  const queryClient = useQueryClient();
+  const { data: clinicData } = useClinic();
+  const visitTypes = clinicData?.visitTypes ?? [];
+  const daysQuery = useQuery({ queryKey: ["clinic-days"], queryFn: () => getDays(10) });
+  const days = daysQuery.data?.days ?? [];
+
   const [step, setStep] = useState(0);
-  const [typeId, setTypeId] = useState<string>(search.type ?? "new");
-  const [date, setDate] = useState<string>(days.find((d) => !d.closed)!.date);
+  const [typeId, setTypeId] = useState<string>("");
+  const [date, setDate] = useState<string>("");
   const [time, setTime] = useState<string | null>(null);
   const [reason, setReason] = useState("");
   const [done, setDone] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
 
-  const visit = visitTypes.find((v) => v.id === typeId) ?? visitTypes[0]!;
-  const slots = useMemo(() => slotsForDate(date), [date]);
+  useEffect(() => {
+    if (!visitTypes.length || typeId) return;
+    const fromSearch = visitTypes.find((v) => v.slug === search.type);
+    setTypeId((fromSearch ?? visitTypes[0]!).id);
+  }, [visitTypes, search.type, typeId]);
+
+  useEffect(() => {
+    if (!days.length || date) return;
+    const open = days.find((d) => !d.closed);
+    if (open) setDate(open.date);
+  }, [days, date]);
+
+  const visit = visitTypes.find((v) => v.id === typeId) ?? visitTypes[0];
+  const slotsQuery = useQuery({
+    queryKey: ["slots", date, visit?.id],
+    queryFn: () => getSlots(date, visit!.id),
+    enabled: Boolean(date && visit?.id),
+  });
+  const slots = slotsQuery.data?.slots ?? [];
   const selectedDay = days.find((d) => d.date === date);
-
   const canNext = step === 0 ? Boolean(typeId) : step === 1 ? Boolean(date) : step === 2 ? Boolean(time) : true;
 
   if (done) {
@@ -45,11 +85,11 @@ function BookingPage() {
           <p className="text-sm text-muted-foreground">حالة الحجز</p>
           <p className="mt-1 font-display text-2xl text-primary">بانتظار الدفع / الدفع في العيادة</p>
           <dl className="mt-5 space-y-2 text-sm">
-            <Row label="نوع الكشف" value={visit.label} />
+            <Row label="نوع الكشف" value={visit?.label ?? "—"} />
             <Row label="اليوم" value={`${selectedDay?.dayName} ${selectedDay?.dayNum}`} />
             <Row label="الموعد" value={time ?? "—"} />
             <Row label="سبب الزيارة" value={reason || "—"} />
-            <Row label="العربون" value={`${visit.deposit} ج.م`} />
+            <Row label="العربون" value={`${visit?.deposit ?? 0} ج.م`} />
           </dl>
           <p className="mt-5 text-xs text-muted-foreground">
             الإلغاء المجاني متاح قبل الموعد بـ ٢٤ ساعة. سيظهر الحجز في صفحة «مواعيدي».
@@ -169,11 +209,11 @@ function BookingPage() {
               <div className="glass-soft rounded-2xl p-5 text-sm">
                 <p className="mb-3 font-semibold">ملخص الحجز</p>
                 <dl className="space-y-2">
-                  <Row label="نوع الكشف" value={visit.label} />
+                  <Row label="نوع الكشف" value={visit?.label ?? "—"} />
                   <Row label="اليوم" value={`${selectedDay?.dayName} ${selectedDay?.dayNum}`} />
                   <Row label="الموعد" value={time ?? "—"} />
-                  <Row label="سعر الكشف" value={`${visit.price} ج.م`} />
-                  <Row label="العربون المطلوب" value={`${visit.deposit} ج.م`} />
+                  <Row label="سعر الكشف" value={`${visit?.price ?? 0} ج.م`} />
+                  <Row label="العربون المطلوب" value={`${visit?.deposit ?? 0} ج.م`} />
                 </dl>
                 <p className="mt-4 rounded-xl border border-border bg-muted p-3 text-xs text-muted-foreground">
                   الدفع الإلكتروني غير مفعّل حالياً، سيتم تسجيل الحجز بحالة «بانتظار الدفع / الدفع في العيادة».
@@ -182,6 +222,7 @@ function BookingPage() {
             </div>
           ) : null}
         </div>
+        {error ? <p className="mt-4 text-sm text-destructive">{error}</p> : null}
 
         <div className="mt-8 flex items-center justify-between gap-3">
           <button
@@ -200,8 +241,25 @@ function BookingPage() {
               التالي
             </button>
           ) : (
-            <button className="btn-primary px-6 py-3" onClick={() => setDone(true)}>
-              تأكيد الحجز
+            <button
+              className="btn-primary px-6 py-3"
+              disabled={pending || !visit || !time || !date}
+              onClick={async () => {
+                if (!visit || !time || !date) return;
+                setPending(true);
+                setError(null);
+                try {
+                  await bookAppointment({ visitTypeId: visit.id, date, time, reason });
+                  await queryClient.invalidateQueries({ queryKey: ["appointments"] });
+                  setDone(true);
+                } catch (err) {
+                  setError(err instanceof ApiError ? err.message : "تعذّر تأكيد الحجز");
+                } finally {
+                  setPending(false);
+                }
+              }}
+            >
+              {pending ? "جارٍ التأكيد..." : "تأكيد الحجز"}
             </button>
           )}
         </div>

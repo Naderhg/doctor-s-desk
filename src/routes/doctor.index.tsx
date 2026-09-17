@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
 import { PageShell } from "@/components/page-shell";
-import { clinic, todaySchedule, patients, prescriptions } from "@/lib/clinic-data";
+import { getDoctorOverview } from "@/lib/doctor";
 
 export const Route = createFileRoute("/doctor/")({
   head: () => ({
@@ -15,18 +16,21 @@ export const Route = createFileRoute("/doctor/")({
 });
 
 function DoctorHome() {
-  const attended = todaySchedule.filter((a) => a.status === "حضور").length;
-  const waiting = todaySchedule.filter((a) => a.status === "قيد الانتظار").length;
-
+  const overview = useQuery({ queryKey: ["doctor-overview"], queryFn: getDoctorOverview });
   const stats = [
-    { label: "مواعيد اليوم", value: todaySchedule.length },
-    { label: "تم الكشف", value: attended },
-    { label: "بانتظار الدور", value: waiting },
-    { label: "روشتات هذا الشهر", value: prescriptions.length },
+    { label: "مواعيد اليوم", value: overview.data?.stats.todayCount ?? 0 },
+    { label: "تم الكشف", value: overview.data?.stats.completed ?? 0 },
+    { label: "بانتظار الدور", value: overview.data?.stats.waiting ?? 0 },
+    { label: "روشتات هذا الشهر", value: overview.data?.stats.prescriptionsThisMonth ?? 0 },
   ];
 
   return (
-    <PageShell eyebrow="لوحة التحكم" title={`أهلاً ${clinic.doctorName}`} description="ملخص يومك في العيادة.">
+    <PageShell
+      eyebrow="لوحة التحكم"
+      title={`أهلاً ${overview.data?.doctorName ?? ""}`}
+      description="ملخص يومك في العيادة."
+    >
+      {overview.isLoading ? <p className="mb-4 text-sm text-muted-foreground">جارٍ التحميل...</p> : null}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {stats.map((s) => (
           <div key={s.label} className="glass rounded-3xl p-5">
@@ -45,7 +49,7 @@ function DoctorHome() {
             </Link>
           </div>
           <ul className="mt-4 space-y-2">
-            {todaySchedule.slice(0, 4).map((a) => (
+            {(overview.data?.today ?? []).map((a) => (
               <li key={a.id} className="glass-soft flex flex-wrap items-center justify-between gap-2 rounded-2xl p-4 text-sm">
                 <span className="font-semibold">{a.time}</span>
                 <span>{a.patient}</span>
@@ -53,15 +57,20 @@ function DoctorHome() {
                 <span className="chip">{a.status}</span>
               </li>
             ))}
+            {!overview.isLoading && (overview.data?.today ?? []).length === 0 ? (
+              <li className="text-sm text-muted-foreground">لا توجد مواعيد اليوم.</li>
+            ) : null}
           </ul>
         </div>
 
         <div className="glass rounded-3xl p-6">
           <h2 className="font-display text-lg">آخر المرضى</h2>
           <ul className="mt-4 space-y-2 text-sm">
-            {patients.slice(0, 5).map((p) => (
+            {(overview.data?.recentPatients ?? []).map((p) => (
               <li key={p.id} className="flex items-center justify-between gap-2 border-b border-border pb-2 last:border-0">
-                <span>{p.name}</span>
+                <Link to="/doctor/patient/$id" params={{ id: p.id }} className="hover:text-primary">
+                  {p.name}
+                </Link>
                 <span className="text-xs text-muted-foreground">{p.lastVisit}</span>
               </li>
             ))}

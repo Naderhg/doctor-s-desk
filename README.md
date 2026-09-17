@@ -46,7 +46,7 @@
 
 ## 4. ما يحتاج خدمات خارجية
 
-- **الدفع (العربون):** يحتاج تفعيل بوابة دفع (Stripe/Paddle عبر Lovable أو مزود محلي بحساب الدكتور).
+- **الدفع (العربون):** يحتاج تفعيل بوابة دفع (Stripe أو مزود محلي بحساب الدكتور).
 
 - **مكالمة الفيديو:** نستخدم رابط اجتماع لكل موعد عبر خدمة فيديو (Daily.co مثلاً) — يحتاج حساب.
 
@@ -68,23 +68,42 @@
 
 - الموقع RTL بالعربية، تصميم طبي هادئ وثيم خاص بالتوكنات.
 
-This project was built with [Lovable](https://lovable.dev).
-
-## Build with Lovable
-
-Continue developing this project in the [Lovable editor](https://lovable.dev/projects/f7f45a76-c75e-431a-9bf7-8d80d705ba75).
-
-- **Ship faster**: describe what you want to build and Lovable handles the code.
-- **Stay in sync**: every change made in Lovable is committed straight to this repository.
-- **Full ownership**: this code is yours. Push to `main` on GitHub and your changes sync back into Lovable, ready for your next prompt.
-
 ## Development
 
-Prefer working locally? You need Node.js and npm — [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating).
+Frontend: Vite on port 3000. API: Express on port 4000. Database: PostgreSQL.
 
 ```sh
-git clone <this-repository-url>
-cd <repository-name>
+docker compose up -d
+cd server
+npm i
+npm run db:push
+npm run db:seed
+npm run dev
+```
+
+In another terminal:
+
+```sh
 npm i
 npm run dev
 ```
+
+Doctor login after seed:
+
+- email: `doctor@clinic.local`
+- password: `Doctor123!`
+
+Patient signup is from `/auth`.
+
+After schema changes:
+
+```sh
+cd server
+npm i
+npm run db:push
+npm run db:seed
+```
+
+Patient APIs: `/clinic`, `/appointments`, `/medical-file`, `/prescriptions`.
+
+Doctor APIs: `/doctor/overview`, `/doctor/schedule`, `/doctor/patients`, `/doctor/visits`, `/doctor/settings`, `/doctor/reports`.

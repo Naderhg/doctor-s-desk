@@ -214,12 +214,6 @@ export const savedDrugs = [
   "نكسيوم ٤٠ مجم",
 ];
 
-export const reviews = [
-  { id: "r1", name: "منى ر.", text: "شرح مفصل وصبر كبير في الكشف، والمواعيد دقيقة." },
-  { id: "r2", name: "أحمد ع.", text: "الحجز من الموقع سهل جداً والروشتة وصلتني على طول." },
-  { id: "r3", name: "نهى س.", text: "متابعة ممتازة لحالة والدتي المزمنة على مدار سنة." },
-];
-
 export type PatientVisit = {
   id: string;
   date: string;
