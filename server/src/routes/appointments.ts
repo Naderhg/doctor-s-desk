@@ -2,10 +2,11 @@ import { Router } from "express";
 import { and, desc, eq } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "../db/index.js";
-import { appointments, clinicSettings, notifications, visitTypes } from "../db/schema.js";
+import { appointments, clinicSettings, notifications, users, visitTypes } from "../db/schema.js";
 import { handleError, sendError } from "../lib/http.js";
 import { arabicDays, appointmentStatusAr, formatDateAr, formatTimeAr, relativeTimeAr } from "../lib/format.js";
 import { assertSlotAvailable } from "../lib/slots.js";
+import { notify } from "../lib/notify.js";
 import { requireAuth, requireRole, type AuthedRequest } from "../middleware/auth.js";
 
 const router = Router();
@@ -42,9 +43,6 @@ function serializeAppointment(
   };
 }
 
-async function notify(userId: string, text: string) {
-  await db.insert(notifications).values({ userId, text });
-}
 
 router.get("/", async (req: AuthedRequest, res) => {
   try {
@@ -85,7 +83,11 @@ router.post("/", async (req: AuthedRequest, res) => {
       sendError(res, 500, "تعذّر إنشاء الحجز");
       return;
     }
-    await notify(req.user!.id, `تم استلام حجز ${visit.label} يوم ${arabicDays[startsAt.getDay()]} ${formatTimeAr(startsAt)}`);
+    await notify(req.user!.id, "appointment_new", "تأكيد الحجز", `تم استلام حجز ${visit.label} يوم ${arabicDays[startsAt.getDay()]} ${formatTimeAr(startsAt)}`, { appointmentId: created.id });
+    const [doctor] = await db.select({ id: users.id }).from(users).where(eq(users.role, "doctor")).limit(1);
+    if (doctor) {
+      await notify(doctor.id, "appointment_new", "حجز جديد", `حجز جديد من ${req.user!.name} — ${visit.label} يوم ${arabicDays[startsAt.getDay()]} ${formatTimeAr(startsAt)}`, { appointmentId: created.id, patientId: req.user!.id });
+    }
     res.status(201).json({ appointment: serializeAppointment(created, visit) });
   } catch (error) {
     handleError(res, error);
@@ -120,7 +122,11 @@ router.post("/:id/cancel", async (req: AuthedRequest, res) => {
       .set({ status: "cancelled" })
       .where(eq(appointments.id, row.appointment.id))
       .returning();
-    await notify(req.user!.id, "تم إلغاء موعدك");
+    await notify(req.user!.id, "appointment_status", "إلغاء الموعد", "تم إلغاء موعدك");
+    const [doctor] = await db.select({ id: users.id }).from(users).where(eq(users.role, "doctor")).limit(1);
+    if (doctor) {
+      await notify(doctor.id, "appointment_status", "إلغاء موعد", `ألغى المريض ${req.user!.name} موعد ${row.visit.label}`, { appointmentId: row.appointment.id });
+    }
     res.json({ appointment: serializeAppointment(updated!, row.visit) });
   } catch (error) {
     handleError(res, error);
@@ -150,7 +156,11 @@ router.post("/:id/reschedule", async (req: AuthedRequest, res) => {
       .set({ startsAt, endsAt })
       .where(eq(appointments.id, row.appointment.id))
       .returning();
-    await notify(req.user!.id, `تم تأجيل موعدك إلى ${arabicDays[startsAt.getDay()]} ${formatTimeAr(startsAt)}`);
+    await notify(req.user!.id, "appointment_status", "تأجيل الموعد", `تم تأجيل موعدك إلى ${arabicDays[startsAt.getDay()]} ${formatTimeAr(startsAt)}`);
+    const [doctor] = await db.select({ id: users.id }).from(users).where(eq(users.role, "doctor")).limit(1);
+    if (doctor) {
+      await notify(doctor.id, "appointment_status", "تأجيل موعد", `أجّل المريض ${req.user!.name} موعد إلى ${arabicDays[startsAt.getDay()]} ${formatTimeAr(startsAt)}`, { appointmentId: row.appointment.id });
+    }
     res.json({ appointment: serializeAppointment(updated!, row.visit) });
   } catch (error) {
     handleError(res, error);

@@ -1,6 +1,7 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useAuth } from "@/hooks/use-auth";
 import { useClinic } from "@/hooks/use-clinic";
+import { NotificationBell } from "@/components/notification-bell";
 
 export function SiteHeader() {
   const { user, logout } = useAuth();
@@ -51,6 +52,7 @@ export function SiteHeader() {
         </nav>
 
         <div className="flex items-center gap-2">
+          {user ? <NotificationBell /> : null}
           {user ? (
             <>
               <span className="hidden max-w-[9rem] truncate text-sm text-muted-foreground sm:inline">{user.name}</span>

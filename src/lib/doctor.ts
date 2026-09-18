@@ -35,7 +35,7 @@ export type DoctorPatientFile = {
   medications: string[];
   lastVisit: string;
   visitsCount: string;
-  attachments: { id: string; name: string; date: string; size: string }[];
+  attachments: { id: string; name: string; mimeType: string; date: string; size: string }[];
   visits: {
     id: string;
     date: string;

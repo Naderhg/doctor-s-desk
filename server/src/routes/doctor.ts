@@ -7,7 +7,6 @@ import {
   attachments,
   clinicSettings,
   medicalProfiles,
-  notifications,
   prescriptionItems,
   prescriptions,
   prescriptionTests,
@@ -26,6 +25,7 @@ import {
   parseYmd,
   toArabicDigits,
 } from "../lib/format.js";
+import { notify } from "../lib/notify.js";
 import { handleError, sendError } from "../lib/http.js";
 import { generateSlots } from "../lib/slots.js";
 import { requireAuth, requireRole, type AuthedRequest } from "../middleware/auth.js";
@@ -68,10 +68,6 @@ function serializeAppt(
     reason: row.reason,
     dateIso: row.startsAt.toISOString(),
   };
-}
-
-async function notify(userId: string, text: string) {
-  await db.insert(notifications).values({ userId, text });
 }
 
 router.get("/overview", async (_req: AuthedRequest, res) => {
@@ -203,7 +199,7 @@ router.post("/appointments/:id/status", async (req: AuthedRequest, res) => {
       .where(eq(appointments.id, row.appointment.id))
       .returning();
     const labels = { confirmed: "تم تأكيد موعدك", cancelled: "تم إلغاء موعدك من العيادة", completed: "تم تسجيل حضورك", no_show: "تم تسجيل غيابك عن الموعد" };
-    await notify(row.patient.id, labels[body.status]);
+    await notify(row.patient.id, "appointment_status", "تحديث الموعد", labels[body.status], { appointmentId: row.appointment.id });
     res.json({ appointment: serializeAppt(updated!, row.visit, row.patient) });
   } catch (error) {
     handleError(res, error);
@@ -309,6 +305,7 @@ router.get("/patients/:id", async (req: AuthedRequest, res) => {
         attachments: files.map((f) => ({
           id: f.id,
           name: f.name,
+          mimeType: f.mimeType,
           date: formatDateAr(f.createdAt),
           size: formatFileSize(f.sizeBytes),
         })),
@@ -363,7 +360,7 @@ router.post("/visits", async (req: AuthedRequest, res) => {
     if (body.appointmentId) {
       await db.update(appointments).set({ status: "completed" }).where(eq(appointments.id, body.appointmentId));
     }
-    await notify(patient.id, "روشتة جديدة متاحة في حسابك");
+    await notify(patient.id, "prescription_new", "روشتة جديدة", "روشتة جديدة متاحة في حسابك", { visitId: visit!.id, prescriptionId: rx!.id });
     res.status(201).json({ ok: true, visitId: visit!.id, prescriptionId: rx!.id });
   } catch (error) {
     handleError(res, error);

@@ -6,9 +6,10 @@ import { mkdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { z } from "zod";
 import { db } from "../db/index.js";
-import { appointments, attachments, medicalProfiles, visitTypes } from "../db/schema.js";
+import { appointments, attachments, medicalProfiles, users, visitTypes } from "../db/schema.js";
 import { formatDateAr, formatFileSize } from "../lib/format.js";
 import { handleError, sendError } from "../lib/http.js";
+import { notify } from "../lib/notify.js";
 import { requireAuth, requireRole, type AuthedRequest } from "../middleware/auth.js";
 
 const router = Router();
@@ -106,6 +107,10 @@ router.put("/", async (req: AuthedRequest, res) => {
       },
     });
     res.json({ ok: true });
+    const [doctor] = await db.select({ id: users.id }).from(users).where(eq(users.role, "doctor")).limit(1);
+    if (doctor) {
+      await notify(doctor.id, "medical_update", "تحديث ملف طبي", `حدّث ${req.user!.name} ملفه الطبي`, { patientId: req.user!.id });
+    }
   } catch (error) {
     handleError(res, error);
   }
@@ -136,6 +141,10 @@ router.post("/attachments", upload.single("file"), async (req: AuthedRequest, re
         size: formatFileSize(file!.sizeBytes),
       },
     });
+    const [doctor] = await db.select({ id: users.id }).from(users).where(eq(users.role, "doctor")).limit(1);
+    if (doctor) {
+      await notify(doctor.id, "attachment_new", "مرفق جديد", `رفع ${req.user!.name} ملفاً جديداً: ${file!.name}`, { patientId: req.user!.id, attachmentId: file!.id });
+    }
   } catch (error) {
     handleError(res, error);
   }

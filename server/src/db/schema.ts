@@ -138,12 +138,27 @@ export const prescriptionTests = pgTable("prescription_tests", {
   name: varchar("name", { length: 160 }).notNull(),
 });
 
+export const notificationTypeEnum = pgEnum("notification_type", [
+  "appointment_new",
+  "appointment_status",
+  "appointment_reminder",
+  "visit_new",
+  "prescription_new",
+  "attachment_new",
+  "medical_update",
+  "medication_reminder",
+  "system",
+]);
+
 export const notifications = pgTable("notifications", {
   id: uuid("id").defaultRandom().primaryKey(),
   userId: uuid("user_id")
     .notNull()
     .references(() => users.id),
+  type: notificationTypeEnum("type").notNull().default("system"),
+  title: varchar("title", { length: 200 }).notNull(),
   text: text("text").notNull(),
+  metadata: jsonb("metadata").$type<Record<string, string>>().notNull().default({}),
   read: boolean("read").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });

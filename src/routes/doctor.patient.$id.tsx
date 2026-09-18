@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { PageShell } from "@/components/page-shell";
 import { getDoctorPatient } from "@/lib/doctor";
+import { FileViewer } from "@/components/file-viewer";
 
 export const Route = createFileRoute("/doctor/patient/$id")({
   head: () => ({
@@ -98,14 +99,7 @@ function PatientFile() {
             {p.attachments.length === 0 ? (
               <p className="text-sm text-muted-foreground">لا توجد مرفقات.</p>
             ) : (
-              <ul className="space-y-2 text-sm">
-                {p.attachments.map((a) => (
-                  <li key={a.id} className="glass-soft flex items-center justify-between gap-3 rounded-2xl px-3 py-2">
-                    <span className="truncate">{a.name}</span>
-                    <span className="shrink-0 text-xs text-muted-foreground">{a.size}</span>
-                  </li>
-                ))}
-              </ul>
+              <FileViewer attachments={p.attachments} />
             )}
           </div>
         </aside>
@@ -137,9 +131,9 @@ function PatientFile() {
 
                   {v.vitals ? (
                     <div className="mb-3 flex flex-wrap gap-2 text-xs">
-                      {v.vitals.bp ? <span className="chip">ضغط {v.vitals.bp}</span> : null}
-                      {v.vitals.temp ? <span className="chip">حرارة {v.vitals.temp}</span> : null}
-                      {v.vitals.weight ? <span className="chip">وزن {v.vitals.weight}</span> : null}
+                      {v.vitals["bp"] ? <span className="chip">ضغط {v.vitals["bp"]}</span> : null}
+                      {v.vitals["temp"] ? <span className="chip">حرارة {v.vitals["temp"]}</span> : null}
+                      {v.vitals["weight"] ? <span className="chip">وزن {v.vitals["weight"]}</span> : null}
                     </div>
                   ) : null}
 

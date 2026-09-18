@@ -18,7 +18,7 @@ export type AuthedRequest = Request & {
 export async function requireAuth(req: AuthedRequest, res: Response, next: NextFunction) {
   const header = req.headers.authorization;
   const bearer = header?.startsWith("Bearer ") ? header.slice(7) : undefined;
-  const token = bearer ?? req.cookies?.token;
+  const token = bearer ?? req.cookies?.token ?? (typeof req.query.token === "string" ? req.query.token : undefined);
 
   if (!token) {
     sendError(res, 401, "يلزم تسجيل الدخول");
