@@ -16,6 +16,7 @@ export const users = pgTable("users", {
   phone: varchar("phone", { length: 30 }),
   passwordHash: varchar("password_hash", { length: 255 }).notNull(),
   role: userRoleEnum("role").notNull().default("patient"),
+  assignedDoctorId: uuid("assigned_doctor_id").references(() => users.id),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
@@ -61,6 +62,7 @@ export const appointments = pgTable("appointments", {
   patientId: uuid("patient_id")
     .notNull()
     .references(() => users.id),
+  doctorId: uuid("doctor_id").references(() => users.id),
   visitTypeId: uuid("visit_type_id")
     .notNull()
     .references(() => visitTypes.id),
@@ -102,6 +104,7 @@ export const visits = pgTable("visits", {
   patientId: uuid("patient_id")
     .notNull()
     .references(() => users.id),
+  doctorId: uuid("doctor_id").references(() => users.id),
   complaint: text("complaint"),
   diagnosis: text("diagnosis"),
   notes: text("notes"),

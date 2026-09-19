@@ -4,7 +4,7 @@ import { useState, type FormEvent } from "react";
 import { PageShell } from "@/components/page-shell";
 import { AuthGate } from "@/components/auth-gate";
 import { ApiError } from "@/lib/api";
-import { listUsers, createUser, deleteUser, type AdminUser } from "@/lib/auth";
+import { listUsers, createUser, deleteUser, getDoctors, type AdminUser } from "@/lib/auth";
 import { useAuth } from "@/hooks/use-auth";
 
 export const Route = createFileRoute("/admin")({
@@ -112,17 +112,19 @@ function CreateUserForm({
 }: {
   pending: boolean;
   error: string | null;
-  onSubmit: (data: { name: string; email: string; phone: string; password: string; role: "doctor" | "receptionist" | "admin" }) => void;
+  onSubmit: (data: { name: string; email: string; phone: string; password: string; role: "doctor" | "receptionist" | "admin"; assignedDoctorId?: string | null }) => void;
 }) {
+  const doctors = useQuery({ queryKey: ["doctors"], queryFn: getDoctors });
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<"doctor" | "receptionist" | "admin">("doctor");
+  const [assignedDoctorId, setAssignedDoctorId] = useState<string>("");
 
   function submit(e: FormEvent) {
     e.preventDefault();
-    onSubmit({ name, email, phone, password, role });
+    onSubmit({ name, email, phone, password, role, assignedDoctorId: assignedDoctorId || null });
   }
 
   return (
@@ -153,6 +155,18 @@ function CreateUserForm({
             <option value="admin">مدير</option>
           </select>
         </div>
+        {role === "receptionist" ? (
+          <div>
+            <label className="mb-1.5 block text-xs text-muted-foreground">الدكتور المسؤول</label>
+            <select className="field" value={assignedDoctorId} onChange={(e) => setAssignedDoctorId(e.target.value)}>
+              <option value="">كل الأطباء (غير محدد)</option>
+              {(doctors.data?.doctors ?? []).map((d) => (
+                <option key={d.id} value={d.id}>{d.name}</option>
+              ))}
+            </select>
+            <p className="mt-1 text-xs text-muted-foreground">اتركه فارغاً لرؤية مواعيد كل الأطباء</p>
+          </div>
+        ) : null}
       </div>
       {error ? <p className="mt-3 text-sm text-destructive">{error}</p> : null}
       <button type="submit" className="btn-primary mt-4 px-5 py-2.5 text-sm" disabled={pending}>
@@ -175,6 +189,11 @@ function UserRow({ user, onDelete, deleting }: { user: AdminUser; onDelete: () =
         <div>
           <p className="font-semibold">{user.name}</p>
           <p className="text-xs text-muted-foreground" dir="ltr">{user.email} · {user.phone ?? "—"}</p>
+          {user.role === "receptionist" ? (
+            <p className="text-xs text-muted-foreground">
+              {user.assignedDoctorId ? "مرتبط بطبيب محدد" : "يرى كل الأطباء"}
+            </p>
+          ) : null}
         </div>
       </div>
       <div className="flex items-center gap-2">

@@ -17,6 +17,7 @@ const bookSchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   time: z.string().regex(/^\d{2}:\d{2}$/),
   reason: z.string().trim().max(500).default(""),
+  doctorId: z.string().uuid().optional(),
 });
 
 function serializeAppointment(
@@ -68,10 +69,16 @@ router.post("/", async (req: AuthedRequest, res) => {
   try {
     const body = bookSchema.parse(req.body);
     const { visit, startsAt, endsAt } = await assertSlotAvailable(body.date, body.time, body.visitTypeId);
+    let doctorId = body.doctorId;
+    if (!doctorId) {
+      const [firstDoctor] = await db.select({ id: users.id }).from(users).where(eq(users.role, "doctor")).limit(1);
+      doctorId = firstDoctor?.id;
+    }
     const [created] = await db
       .insert(appointments)
       .values({
         patientId: req.user!.id,
+        doctorId: doctorId ?? null,
         visitTypeId: visit.id,
         startsAt,
         endsAt,
@@ -84,9 +91,8 @@ router.post("/", async (req: AuthedRequest, res) => {
       return;
     }
     await notify(req.user!.id, "appointment_new", "تأكيد الحجز", `تم استلام حجز ${visit.label} يوم ${arabicDays[startsAt.getDay()]} ${formatTimeAr(startsAt)}`, { appointmentId: created.id });
-    const [doctor] = await db.select({ id: users.id }).from(users).where(eq(users.role, "doctor")).limit(1);
-    if (doctor) {
-      await notify(doctor.id, "appointment_new", "حجز جديد", `حجز جديد من ${req.user!.name} — ${visit.label} يوم ${arabicDays[startsAt.getDay()]} ${formatTimeAr(startsAt)}`, { appointmentId: created.id, patientId: req.user!.id });
+    if (doctorId) {
+      await notify(doctorId, "appointment_new", "حجز جديد", `حجز جديد من ${req.user!.name} — ${visit.label} يوم ${arabicDays[startsAt.getDay()]} ${formatTimeAr(startsAt)}`, { appointmentId: created.id, patientId: req.user!.id });
     }
     res.status(201).json({ appointment: serializeAppointment(created, visit) });
   } catch (error) {
@@ -123,9 +129,8 @@ router.post("/:id/cancel", async (req: AuthedRequest, res) => {
       .where(eq(appointments.id, row.appointment.id))
       .returning();
     await notify(req.user!.id, "appointment_status", "إلغاء الموعد", "تم إلغاء موعدك");
-    const [doctor] = await db.select({ id: users.id }).from(users).where(eq(users.role, "doctor")).limit(1);
-    if (doctor) {
-      await notify(doctor.id, "appointment_status", "إلغاء موعد", `ألغى المريض ${req.user!.name} موعد ${row.visit.label}`, { appointmentId: row.appointment.id });
+    if (row.appointment.doctorId) {
+      await notify(row.appointment.doctorId, "appointment_status", "إلغاء موعد", `ألغى المريض ${req.user!.name} موعد ${row.visit.label}`, { appointmentId: row.appointment.id });
     }
     res.json({ appointment: serializeAppointment(updated!, row.visit) });
   } catch (error) {
@@ -157,9 +162,8 @@ router.post("/:id/reschedule", async (req: AuthedRequest, res) => {
       .where(eq(appointments.id, row.appointment.id))
       .returning();
     await notify(req.user!.id, "appointment_status", "تأجيل الموعد", `تم تأجيل موعدك إلى ${arabicDays[startsAt.getDay()]} ${formatTimeAr(startsAt)}`);
-    const [doctor] = await db.select({ id: users.id }).from(users).where(eq(users.role, "doctor")).limit(1);
-    if (doctor) {
-      await notify(doctor.id, "appointment_status", "تأجيل موعد", `أجّل المريض ${req.user!.name} موعد إلى ${arabicDays[startsAt.getDay()]} ${formatTimeAr(startsAt)}`, { appointmentId: row.appointment.id });
+    if (row.appointment.doctorId) {
+      await notify(row.appointment.doctorId, "appointment_status", "تأجيل موعد", `أجّل المريض ${req.user!.name} موعد إلى ${arabicDays[startsAt.getDay()]} ${formatTimeAr(startsAt)}`, { appointmentId: row.appointment.id });
     }
     res.json({ appointment: serializeAppointment(updated!, row.visit) });
   } catch (error) {

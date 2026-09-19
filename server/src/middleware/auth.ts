@@ -12,6 +12,7 @@ export type AuthedRequest = Request & {
     email: string;
     phone: string | null;
     role: UserRole;
+    assignedDoctorId: string | null;
   };
 };
 
@@ -38,6 +39,7 @@ export async function requireAuth(req: AuthedRequest, res: Response, next: NextF
       email: user.email,
       phone: user.phone,
       role: user.role,
+      assignedDoctorId: user.assignedDoctorId,
     };
     next();
   } catch {

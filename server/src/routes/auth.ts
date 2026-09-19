@@ -28,6 +28,7 @@ const createUserSchema = z.object({
   phone: z.string().trim().min(8, "رقم الموبايل غير صالح").max(30),
   password: z.string().min(8, "كلمة المرور يجب ألا تقل عن ٨ أحرف"),
   role: z.enum(["doctor", "receptionist", "admin"]),
+  assignedDoctorId: z.string().uuid().optional().nullable(),
 });
 
 function setAuthCookie(res: import("express").Response, token: string) {
@@ -103,7 +104,7 @@ router.post("/logout", (_req, res) => {
 });
 
 router.get("/me", requireAuth, (req: AuthedRequest, res) => {
-  res.json({ user: req.user });
+  res.json({ user: { ...req.user, assignedDoctorId: req.user.assignedDoctorId } });
 });
 
 // ─── Admin: user management ───
@@ -111,7 +112,16 @@ router.get("/me", requireAuth, (req: AuthedRequest, res) => {
 router.get("/users", requireAuth, requireRole("admin"), async (_req, res) => {
   try {
     const rows = await db.select().from(users).orderBy(users.createdAt);
-    res.json({ users: rows.map(publicUser) });
+    res.json({ users: rows.map((u) => ({ ...publicUser(u), assignedDoctorId: u.assignedDoctorId })) });
+  } catch (error) {
+    handleError(res, error);
+  }
+});
+
+router.get("/doctors", requireAuth, requireRole("admin", "doctor", "receptionist"), async (_req, res) => {
+  try {
+    const rows = await db.select({ id: users.id, name: users.name }).from(users).where(eq(users.role, "doctor")).orderBy(users.name);
+    res.json({ doctors: rows });
   } catch (error) {
     handleError(res, error);
   }
@@ -134,13 +144,14 @@ router.post("/users", requireAuth, requireRole("admin"), async (req, res) => {
         phone: body.phone,
         passwordHash,
         role: body.role as UserRole,
+        assignedDoctorId: body.role === "receptionist" ? body.assignedDoctorId ?? null : null,
       })
       .returning();
     if (!user) {
       sendError(res, 500, "تعذّر إنشاء الحساب");
       return;
     }
-    res.status(201).json({ user: publicUser(user) });
+    res.status(201).json({ user: { ...publicUser(user), assignedDoctorId: user.assignedDoctorId } });
   } catch (error) {
     handleError(res, error);
   }

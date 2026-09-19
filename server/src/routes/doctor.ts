@@ -70,20 +70,33 @@ function serializeAppt(
   };
 }
 
-router.get("/overview", async (_req: AuthedRequest, res) => {
+// Returns the doctor ID to scope queries by, or null for no filtering (admin or unassigned receptionist)
+function scopeDoctorId(req: AuthedRequest): string | null {
+  if (!req.user) return null;
+  if (req.user.role === "doctor") return req.user.id;
+  if (req.user.role === "receptionist") return req.user.assignedDoctorId;
+  return null; // admin sees all
+}
+
+router.get("/overview", async (req: AuthedRequest, res) => {
   try {
     const [clinic] = await db.select().from(clinicSettings).limit(1);
     const now = new Date();
     const todayStart = startOfDay(now);
     const todayEnd = endOfDay(now);
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const doctorFilter = scopeDoctorId(req);
 
     const todayRows = await db
       .select({ appointment: appointments, visit: visitTypes, patient: users })
       .from(appointments)
       .innerJoin(visitTypes, eq(appointments.visitTypeId, visitTypes.id))
       .innerJoin(users, eq(appointments.patientId, users.id))
-      .where(and(gte(appointments.startsAt, todayStart), lt(appointments.startsAt, todayEnd)))
+      .where(and(
+        gte(appointments.startsAt, todayStart),
+        lt(appointments.startsAt, todayEnd),
+        ...(doctorFilter ? [eq(appointments.doctorId, doctorFilter)] : []),
+      ))
       .orderBy(appointments.startsAt);
 
     const today = todayRows.map((r) => serializeAppt(r.appointment, r.visit, r.patient));
@@ -93,7 +106,11 @@ router.get("/overview", async (_req: AuthedRequest, res) => {
     const [rxCount] = await db
       .select({ n: sql<number>`count(*)::int` })
       .from(prescriptions)
-      .where(gte(prescriptions.createdAt, monthStart));
+      .innerJoin(visits, eq(prescriptions.visitId, visits.id))
+      .where(and(
+        gte(prescriptions.createdAt, monthStart),
+        ...(doctorFilter ? [eq(visits.doctorId, doctorFilter)] : []),
+      ));
 
     const recentPatients = await db
       .select({
@@ -103,7 +120,10 @@ router.get("/overview", async (_req: AuthedRequest, res) => {
       })
       .from(users)
       .innerJoin(appointments, eq(appointments.patientId, users.id))
-      .where(eq(users.role, "patient"))
+      .where(and(
+        eq(users.role, "patient"),
+        ...(doctorFilter ? [eq(appointments.doctorId, doctorFilter)] : []),
+      ))
       .groupBy(users.id, users.name)
       .orderBy(desc(sql`max(${appointments.startsAt})`))
       .limit(5);
@@ -136,12 +156,17 @@ router.get("/schedule", async (req: AuthedRequest, res) => {
       return;
     }
     const date = parseYmd(dateStr);
+    const doctorFilter = scopeDoctorId(req);
     const rows = await db
       .select({ appointment: appointments, visit: visitTypes, patient: users })
       .from(appointments)
       .innerJoin(visitTypes, eq(appointments.visitTypeId, visitTypes.id))
       .innerJoin(users, eq(appointments.patientId, users.id))
-      .where(and(gte(appointments.startsAt, startOfDay(date)), lt(appointments.startsAt, endOfDay(date))))
+      .where(and(
+        gte(appointments.startsAt, startOfDay(date)),
+        lt(appointments.startsAt, endOfDay(date)),
+        ...(doctorFilter ? [eq(appointments.doctorId, doctorFilter)] : []),
+      ))
       .orderBy(appointments.startsAt);
 
     const types = await db.select().from(visitTypes);
@@ -209,6 +234,7 @@ router.post("/appointments/:id/status", async (req: AuthedRequest, res) => {
 router.get("/patients", async (req: AuthedRequest, res) => {
   try {
     const q = String(req.query.q ?? "").trim();
+    const doctorFilter = scopeDoctorId(req);
     const rows = await db
       .select({
         id: users.id,
@@ -222,9 +248,11 @@ router.get("/patients", async (req: AuthedRequest, res) => {
       .leftJoin(medicalProfiles, eq(medicalProfiles.userId, users.id))
       .leftJoin(appointments, eq(appointments.patientId, users.id))
       .where(
-        q
-          ? and(eq(users.role, "patient"), or(sql`${users.name} ilike ${"%" + q + "%"}`, sql`coalesce(${users.phone}, '') ilike ${"%" + q + "%"}`))
-          : eq(users.role, "patient"),
+        and(
+          eq(users.role, "patient"),
+          ...(doctorFilter ? [eq(appointments.doctorId, doctorFilter)] : []),
+          ...(q ? [or(sql`${users.name} ilike ${"%" + q + "%"}`, sql`coalesce(${users.phone}, '') ilike ${"%" + q + "%"}`)] : []),
+        ),
       )
       .groupBy(users.id, users.name, users.phone, medicalProfiles.ageYears)
       .orderBy(users.name);
@@ -246,6 +274,7 @@ router.get("/patients", async (req: AuthedRequest, res) => {
 
 router.get("/patients/:id", async (req: AuthedRequest, res) => {
   try {
+    const doctorFilter = scopeDoctorId(req);
     const [patient] = await db
       .select()
       .from(users)
@@ -255,13 +284,27 @@ router.get("/patients/:id", async (req: AuthedRequest, res) => {
       sendError(res, 404, "المريض غير موجود");
       return;
     }
+    // If scoped to a doctor, verify this patient has an appointment with that doctor
+    if (doctorFilter) {
+      const [hasAppt] = await db.select({ id: appointments.id }).from(appointments)
+        .where(and(eq(appointments.patientId, patient.id), eq(appointments.doctorId, doctorFilter))).limit(1);
+      if (!hasAppt) {
+        sendError(res, 403, "هذا المريض غير مرتبط بطبيبك");
+        return;
+      }
+    }
     const [profile] = await db.select().from(medicalProfiles).where(eq(medicalProfiles.userId, patient.id)).limit(1);
     const files = await db.select().from(attachments).where(eq(attachments.userId, patient.id)).orderBy(desc(attachments.createdAt));
-    const visitRows = await db.select().from(visits).where(eq(visits.patientId, patient.id)).orderBy(desc(visits.createdAt));
+    const visitRows = doctorFilter
+      ? await db.select().from(visits).where(and(eq(visits.patientId, patient.id), eq(visits.doctorId, doctorFilter))).orderBy(desc(visits.createdAt))
+      : await db.select().from(visits).where(eq(visits.patientId, patient.id)).orderBy(desc(visits.createdAt));
     const apptCount = await db
       .select({ n: sql<number>`count(*)::int`, last: sql<Date | null>`max(${appointments.startsAt})` })
       .from(appointments)
-      .where(eq(appointments.patientId, patient.id));
+      .where(and(
+        eq(appointments.patientId, patient.id),
+        ...(doctorFilter ? [eq(appointments.doctorId, doctorFilter)] : []),
+      ));
 
     const history = [];
     for (const v of visitRows) {
@@ -335,11 +378,21 @@ router.post("/visits", requireRole("doctor", "admin"), async (req: AuthedRequest
       sendError(res, 404, "المريض غير موجود");
       return;
     }
+    // Determine doctorId: from the appointment, or from the logged-in doctor
+    let visitDoctorId: string | null = null;
+    if (body.appointmentId) {
+      const [appt] = await db.select({ doctorId: appointments.doctorId }).from(appointments).where(eq(appointments.id, body.appointmentId)).limit(1);
+      visitDoctorId = appt?.doctorId ?? null;
+    }
+    if (!visitDoctorId && req.user?.role === "doctor") {
+      visitDoctorId = req.user.id;
+    }
     const [visit] = await db
       .insert(visits)
       .values({
         patientId: patient.id,
         appointmentId: body.appointmentId ?? null,
+        doctorId: visitDoctorId,
         complaint: body.complaint,
         diagnosis: body.diagnosis,
         notes: body.notes,
@@ -466,13 +519,18 @@ router.get("/reports", requireRole("doctor", "admin"), async (req: AuthedRequest
     });
     const requested = String(req.query.month ?? months[0]!.id);
     const current = months.find((m) => m.id === requested) ?? months[0]!;
+    const doctorFilter = scopeDoctorId(req);
 
     const rows = await db
       .select({ appointment: appointments, visit: visitTypes, patient: users })
       .from(appointments)
       .innerJoin(visitTypes, eq(appointments.visitTypeId, visitTypes.id))
       .innerJoin(users, eq(appointments.patientId, users.id))
-      .where(and(gte(appointments.startsAt, current.start), lt(appointments.startsAt, current.end)));
+      .where(and(
+        gte(appointments.startsAt, current.start),
+        lt(appointments.startsAt, current.end),
+        ...(doctorFilter ? [eq(appointments.doctorId, doctorFilter)] : []),
+      ));
 
     const booked = rows.length;
     const attended = rows.filter((r) => r.appointment.status === "completed").length;
@@ -488,7 +546,11 @@ router.get("/reports", requireRole("doctor", "admin"), async (req: AuthedRequest
     const visitRows = await db
       .select()
       .from(visits)
-      .where(and(gte(visits.createdAt, current.start), lt(visits.createdAt, current.end)));
+      .where(and(
+        gte(visits.createdAt, current.start),
+        lt(visits.createdAt, current.end),
+        ...(doctorFilter ? [eq(visits.doctorId, doctorFilter)] : []),
+      ));
     const dxMap = new Map<string, number>();
     for (const v of visitRows) {
       const name = (v.diagnosis ?? "").trim();

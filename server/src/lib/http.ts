@@ -8,6 +8,7 @@ export function publicUser(user: {
   email: string;
   phone: string | null;
   role: UserRole;
+  assignedDoctorId?: string | null;
 }) {
   return {
     id: user.id,
@@ -15,6 +16,7 @@ export function publicUser(user: {
     email: user.email,
     phone: user.phone,
     role: user.role,
+    assignedDoctorId: user.assignedDoctorId ?? null,
   };
 }
 

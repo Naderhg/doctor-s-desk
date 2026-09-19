@@ -8,6 +8,7 @@ export type User = {
   email: string;
   phone: string | null;
   role: UserRole;
+  assignedDoctorId: string | null;
 };
 
 type AuthResponse = { token: string; user: User };
@@ -42,6 +43,7 @@ export type AdminUser = {
   email: string;
   phone: string | null;
   role: UserRole;
+  assignedDoctorId: string | null;
 };
 
 export function listUsers() {
@@ -54,6 +56,7 @@ export function createUser(input: {
   phone: string;
   password: string;
   role: "doctor" | "receptionist" | "admin";
+  assignedDoctorId?: string | null;
 }) {
   return api<{ user: AdminUser }>("/auth/users", {
     method: "POST",
@@ -63,4 +66,8 @@ export function createUser(input: {
 
 export function deleteUser(id: string) {
   return api<{ ok: boolean }>(`/auth/users/${id}`, { method: "DELETE" });
+}
+
+export function getDoctors() {
+  return api<{ doctors: { id: string; name: string }[] }>("/auth/doctors");
 }
