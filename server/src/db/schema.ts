@@ -1,6 +1,6 @@
 import { boolean, integer, jsonb, pgEnum, pgTable, text, timestamp, uuid, varchar } from "drizzle-orm/pg-core";
 
-export const userRoleEnum = pgEnum("user_role", ["patient", "doctor"]);
+export const userRoleEnum = pgEnum("user_role", ["patient", "doctor", "admin", "receptionist"]);
 export const appointmentStatusEnum = pgEnum("appointment_status", [
   "pending_payment",
   "confirmed",

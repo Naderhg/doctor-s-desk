@@ -21,6 +21,23 @@ async function seed() {
     console.log(`Seeded doctor ${email}`);
   }
 
+  // Seed admin user
+  const adminEmail = "admin@clinic.local";
+  const [adminExisting] = await db.select({ id: users.id }).from(users).where(eq(users.email, adminEmail)).limit(1);
+  if (adminExisting) {
+    console.log(`Admin already exists: ${adminEmail}`);
+  } else {
+    const adminHash = await bcrypt.hash("Admin123!", 12);
+    await db.insert(users).values({
+      name: "مدير العيادة",
+      email: adminEmail,
+      phone: null,
+      passwordHash: adminHash,
+      role: "admin",
+    });
+    console.log(`Seeded admin ${adminEmail} (password: Admin123!)`);
+  }
+
   const [clinic] = await db.select({ id: clinicSettings.id }).from(clinicSettings).limit(1);
   if (!clinic) {
     await db.insert(clinicSettings).values({

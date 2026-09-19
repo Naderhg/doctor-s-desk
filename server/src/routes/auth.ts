@@ -5,8 +5,8 @@ import { z } from "zod";
 import { db } from "../db/index.js";
 import { users } from "../db/schema.js";
 import { handleError, publicUser, sendError } from "../lib/http.js";
-import { signToken } from "../lib/jwt.js";
-import { requireAuth, type AuthedRequest } from "../middleware/auth.js";
+import { signToken, type UserRole } from "../lib/jwt.js";
+import { requireAuth, requireRole, type AuthedRequest } from "../middleware/auth.js";
 
 const router = Router();
 
@@ -20,6 +20,14 @@ const signupSchema = z.object({
 const loginSchema = z.object({
   email: z.string().trim().email("بريد غير صالح").toLowerCase(),
   password: z.string().min(1, "أدخل كلمة المرور"),
+});
+
+const createUserSchema = z.object({
+  name: z.string().trim().min(2, "الاسم قصير جداً").max(120),
+  email: z.string().trim().email("بريد غير صالح").toLowerCase(),
+  phone: z.string().trim().min(8, "رقم الموبايل غير صالح").max(30),
+  password: z.string().min(8, "كلمة المرور يجب ألا تقل عن ٨ أحرف"),
+  role: z.enum(["doctor", "receptionist", "admin"]),
 });
 
 function setAuthCookie(res: import("express").Response, token: string) {
@@ -96,6 +104,64 @@ router.post("/logout", (_req, res) => {
 
 router.get("/me", requireAuth, (req: AuthedRequest, res) => {
   res.json({ user: req.user });
+});
+
+// ─── Admin: user management ───
+
+router.get("/users", requireAuth, requireRole("admin"), async (_req, res) => {
+  try {
+    const rows = await db.select().from(users).orderBy(users.createdAt);
+    res.json({ users: rows.map(publicUser) });
+  } catch (error) {
+    handleError(res, error);
+  }
+});
+
+router.post("/users", requireAuth, requireRole("admin"), async (req, res) => {
+  try {
+    const body = createUserSchema.parse(req.body);
+    const [existing] = await db.select({ id: users.id }).from(users).where(eq(users.email, body.email)).limit(1);
+    if (existing) {
+      sendError(res, 409, "هذا البريد مسجّل بالفعل");
+      return;
+    }
+    const passwordHash = await bcrypt.hash(body.password, 12);
+    const [user] = await db
+      .insert(users)
+      .values({
+        name: body.name,
+        email: body.email,
+        phone: body.phone,
+        passwordHash,
+        role: body.role as UserRole,
+      })
+      .returning();
+    if (!user) {
+      sendError(res, 500, "تعذّر إنشاء الحساب");
+      return;
+    }
+    res.status(201).json({ user: publicUser(user) });
+  } catch (error) {
+    handleError(res, error);
+  }
+});
+
+router.delete("/users/:id", requireAuth, requireRole("admin"), async (req, res) => {
+  try {
+    const [user] = await db.select().from(users).where(eq(users.id, req.params.id)).limit(1);
+    if (!user) {
+      sendError(res, 404, "المستخدم غير موجود");
+      return;
+    }
+    if (user.role === "patient") {
+      sendError(res, 400, "لا يمكن حذف حساب مريض من هنا");
+      return;
+    }
+    await db.delete(users).where(eq(users.id, req.params.id));
+    res.json({ ok: true });
+  } catch (error) {
+    handleError(res, error);
+  }
 });
 
 export default router;

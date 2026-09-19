@@ -2,7 +2,7 @@ import type { NextFunction, Request, Response } from "express";
 import { eq } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { users } from "../db/schema.js";
-import { verifyToken } from "../lib/jwt.js";
+import { verifyToken, type UserRole } from "../lib/jwt.js";
 import { sendError } from "../lib/http.js";
 
 export type AuthedRequest = Request & {
@@ -11,7 +11,7 @@ export type AuthedRequest = Request & {
     name: string;
     email: string;
     phone: string | null;
-    role: "patient" | "doctor";
+    role: UserRole;
   };
 };
 
@@ -45,13 +45,13 @@ export async function requireAuth(req: AuthedRequest, res: Response, next: NextF
   }
 }
 
-export function requireRole(role: "doctor" | "patient") {
+export function requireRole(...roles: UserRole[]) {
   return (req: AuthedRequest, res: Response, next: NextFunction) => {
     if (!req.user) {
       sendError(res, 401, "يلزم تسجيل الدخول");
       return;
     }
-    if (req.user.role !== role) {
+    if (!roles.includes(req.user.role)) {
       sendError(res, 403, "غير مصرح لك بالوصول");
       return;
     }

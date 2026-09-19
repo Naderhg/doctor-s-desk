@@ -1,12 +1,13 @@
 import type { Response } from "express";
 import { ZodError } from "zod";
+import type { UserRole } from "./jwt.js";
 
 export function publicUser(user: {
   id: string;
   name: string;
   email: string;
   phone: string | null;
-  role: "patient" | "doctor";
+  role: UserRole;
 }) {
   return {
     id: user.id,

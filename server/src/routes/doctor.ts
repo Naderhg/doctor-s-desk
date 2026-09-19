@@ -31,7 +31,7 @@ import { generateSlots } from "../lib/slots.js";
 import { requireAuth, requireRole, type AuthedRequest } from "../middleware/auth.js";
 
 const router = Router();
-router.use(requireAuth, requireRole("doctor"));
+router.use(requireAuth, requireRole("doctor", "admin", "receptionist"));
 
 function ymd(date: Date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
@@ -327,7 +327,7 @@ const visitSchema = z.object({
   tests: z.array(z.string().trim()).optional().default([]),
 });
 
-router.post("/visits", async (req: AuthedRequest, res) => {
+router.post("/visits", requireRole("doctor", "admin"), async (req: AuthedRequest, res) => {
   try {
     const body = visitSchema.parse(req.body);
     const [patient] = await db.select().from(users).where(and(eq(users.id, body.patientId), eq(users.role, "patient"))).limit(1);
@@ -367,7 +367,7 @@ router.post("/visits", async (req: AuthedRequest, res) => {
   }
 });
 
-router.get("/settings", async (_req: AuthedRequest, res) => {
+router.get("/settings", requireRole("admin"), async (_req: AuthedRequest, res) => {
   try {
     const [clinic] = await db.select().from(clinicSettings).limit(1);
     const types = await db.select().from(visitTypes);
@@ -420,7 +420,7 @@ const settingsSchema = z.object({
   ),
 });
 
-router.put("/settings", async (req: AuthedRequest, res) => {
+router.put("/settings", requireRole("admin"), async (req: AuthedRequest, res) => {
   try {
     const body = settingsSchema.parse(req.body);
     const hoursDisplay = body.workingHours
@@ -452,7 +452,7 @@ router.put("/settings", async (req: AuthedRequest, res) => {
   }
 });
 
-router.get("/reports", async (req: AuthedRequest, res) => {
+router.get("/reports", requireRole("doctor", "admin"), async (req: AuthedRequest, res) => {
   try {
     const now = new Date();
     const months = Array.from({ length: 3 }, (_, i) => {

@@ -35,7 +35,11 @@ function AuthPage() {
         mode === "login"
           ? await login({ email, password })
           : await signup({ name, email, phone, password });
-      await navigate({ to: nextUser.role === "doctor" ? "/doctor" : "/appointments" });
+      const dest =
+        nextUser.role === "patient" ? "/appointments" :
+        nextUser.role === "admin" ? "/admin" :
+        "/doctor";
+      await navigate({ to: dest });
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "تعذّر إكمال الطلب");
     } finally {

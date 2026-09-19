@@ -3,9 +3,11 @@ import { env } from "./env.js";
 
 const jwt = createRequire(import.meta.url)("jsonwebtoken") as typeof import("jsonwebtoken");
 
+export type UserRole = "patient" | "doctor" | "admin" | "receptionist";
+
 export type TokenPayload = {
   sub: string;
-  role: "patient" | "doctor";
+  role: UserRole;
 };
 
 export function signToken(payload: TokenPayload) {
