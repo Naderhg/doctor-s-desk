@@ -6,12 +6,12 @@ import { PageShell } from "@/components/page-shell";
 import { ApiError } from "@/lib/api";
 import { createVisit, getDoctorPatients } from "@/lib/doctor";
 
-type Search = { patientId?: string; appointmentId?: string };
+type Search = { patientId?: string | undefined; appointmentId?: string | undefined };
 
 export const Route = createFileRoute("/doctor/visit")({
   validateSearch: (search: Record<string, unknown>): Search => ({
-    patientId: typeof search.patientId === "string" ? search.patientId : undefined,
-    appointmentId: typeof search.appointmentId === "string" ? search.appointmentId : undefined,
+    patientId: typeof search["patientId"] === "string" ? search["patientId"] : undefined,
+    appointmentId: typeof search["appointmentId"] === "string" ? search["appointmentId"] : undefined,
   }),
   head: () => ({
     meta: [

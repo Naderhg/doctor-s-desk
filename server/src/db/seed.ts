@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import { env } from "../lib/env.js";
 import { db } from "./index.js";
-import { clinicSettings, reviews, users, visitTypes, workingHours } from "./schema.js";
+import { clinicSettings, reviews, services, users, visitTypes, workingHours } from "./schema.js";
 
 async function seed() {
   const email = env.doctorEmail.toLowerCase();
@@ -36,6 +36,41 @@ async function seed() {
       role: "admin",
     });
     console.log(`Seeded admin ${adminEmail} (password: Admin123!)`);
+  }
+
+  // Seed cashier user
+  const cashierEmail = "cashier@clinic.local";
+  const [cashierExisting] = await db.select({ id: users.id }).from(users).where(eq(users.email, cashierEmail)).limit(1);
+  if (cashierExisting) {
+    console.log(`Cashier already exists: ${cashierEmail}`);
+  } else {
+    const cashierHash = await bcrypt.hash("Cashier123!", 12);
+    await db.insert(users).values({
+      name: "موظف الحسابات",
+      email: cashierEmail,
+      phone: null,
+      passwordHash: cashierHash,
+      role: "cashier",
+    });
+    console.log(`Seeded cashier ${cashierEmail} (password: Cashier123!)`);
+  }
+
+  // Seed services catalog
+  const existingServices = await db.select({ id: services.id }).from(services).limit(1);
+  if (existingServices.length === 0) {
+    await db.insert(services).values([
+      { code: "CONS-ER", name: "كشف طوارئ", category: "consultation", price: 500, department: "er" },
+      { code: "CONS-OPD", name: "كشف عيادة خارجية", category: "consultation", price: 400, department: "opd" },
+      { code: "CONS-FUP", name: "إعادة كشف", category: "consultation", price: 250, department: "opd" },
+      { code: "ROOM-DAY", name: "إقامة ليلة — غرفة داخلي", category: "room", price: 1500, department: "ipd" },
+      { code: "ROOM-ICU", name: "إقامة ليلة — رعاية مركزة", category: "room", price: 5000, department: "ipd" },
+      { code: "OR-FEE", name: "رسوم غرفة عمليات", category: "procedure", price: 8000, department: "or" },
+      { code: "LAB-CBC", name: "تحليل صورة دم كاملة CBC", category: "lab", price: 150, department: null },
+      { code: "LAB-GLU", name: "تحليل سكر", category: "lab", price: 80, department: null },
+      { code: "RAD-XRAY", name: "أشعة عادية", category: "radiology", price: 300, department: null },
+      { code: "RAD-CT", name: "أشعة مقطعية", category: "radiology", price: 1200, department: null },
+    ]);
+    console.log("Seeded services catalog");
   }
 
   const [clinic] = await db.select({ id: clinicSettings.id }).from(clinicSettings).limit(1);

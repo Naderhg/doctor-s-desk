@@ -10,6 +10,8 @@ import prescriptionsRouter from "./routes/prescriptions.js";
 import doctorRouter from "./routes/doctor.js";
 import notificationsRouter from "./routes/notifications.js";
 import filesRouter from "./routes/files.js";
+import encountersRouter from "./routes/encounters.js";
+import billingRouter from "./routes/billing.js";
 
 const app = express();
 
@@ -34,6 +36,8 @@ app.use("/prescriptions", prescriptionsRouter);
 app.use("/doctor", doctorRouter);
 app.use("/notifications", notificationsRouter);
 app.use("/files", filesRouter);
+app.use("/encounters", encountersRouter);
+app.use("/billing", billingRouter);
 
 app.listen(env.port, () => {
   console.log(`API listening on http://localhost:${env.port}`);

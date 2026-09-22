@@ -27,7 +27,7 @@ const createUserSchema = z.object({
   email: z.string().trim().email("بريد غير صالح").toLowerCase(),
   phone: z.string().trim().min(8, "رقم الموبايل غير صالح").max(30),
   password: z.string().min(8, "كلمة المرور يجب ألا تقل عن ٨ أحرف"),
-  role: z.enum(["doctor", "receptionist", "admin"]),
+  role: z.enum(["doctor", "receptionist", "admin", "cashier"]),
   assignedDoctorId: z.string().uuid().optional().nullable(),
 });
 
@@ -104,7 +104,7 @@ router.post("/logout", (_req, res) => {
 });
 
 router.get("/me", requireAuth, (req: AuthedRequest, res) => {
-  res.json({ user: { ...req.user, assignedDoctorId: req.user.assignedDoctorId } });
+  res.json({ user: req.user });
 });
 
 // ─── Admin: user management ───

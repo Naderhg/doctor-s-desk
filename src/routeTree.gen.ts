@@ -10,10 +10,13 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AppointmentsRouteImport } from './routes/appointments'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as BillingRouteImport } from './routes/billing'
 import { Route as BookingRouteImport } from './routes/booking'
 import { Route as DoctorRouteImport } from './routes/doctor'
+import { Route as FrontDeskRouteImport } from './routes/front-desk'
 import { Route as MedicalFileRouteImport } from './routes/medical-file'
 import { Route as PrescriptionsRouteImport } from './routes/prescriptions'
 import { Route as DoctorIndexRouteImport } from './routes/doctor.index'
@@ -29,6 +32,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AppointmentsRoute = AppointmentsRouteImport.update({
   id: '/appointments',
   path: '/appointments',
@@ -39,6 +47,11 @@ const AuthRoute = AuthRouteImport.update({
   path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
+const BillingRoute = BillingRouteImport.update({
+  id: '/billing',
+  path: '/billing',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const BookingRoute = BookingRouteImport.update({
   id: '/booking',
   path: '/booking',
@@ -47,6 +60,11 @@ const BookingRoute = BookingRouteImport.update({
 const DoctorRoute = DoctorRouteImport.update({
   id: '/doctor',
   path: '/doctor',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FrontDeskRoute = FrontDeskRouteImport.update({
+  id: '/front-desk',
+  path: '/front-desk',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MedicalFileRoute = MedicalFileRouteImport.update({
@@ -97,10 +115,13 @@ const DoctorPatientIdRoute = DoctorPatientIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
   '/appointments': typeof AppointmentsRoute
   '/auth': typeof AuthRoute
+  '/billing': typeof BillingRoute
   '/booking': typeof BookingRoute
   '/doctor': typeof DoctorRouteWithChildren
+  '/front-desk': typeof FrontDeskRoute
   '/medical-file': typeof MedicalFileRoute
   '/prescriptions': typeof PrescriptionsRoute
   '/doctor/patients': typeof DoctorPatientsRoute
@@ -113,9 +134,12 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
   '/appointments': typeof AppointmentsRoute
   '/auth': typeof AuthRoute
+  '/billing': typeof BillingRoute
   '/booking': typeof BookingRoute
+  '/front-desk': typeof FrontDeskRoute
   '/medical-file': typeof MedicalFileRoute
   '/prescriptions': typeof PrescriptionsRoute
   '/doctor/patients': typeof DoctorPatientsRoute
@@ -129,10 +153,13 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
   '/appointments': typeof AppointmentsRoute
   '/auth': typeof AuthRoute
+  '/billing': typeof BillingRoute
   '/booking': typeof BookingRoute
   '/doctor': typeof DoctorRouteWithChildren
+  '/front-desk': typeof FrontDeskRoute
   '/medical-file': typeof MedicalFileRoute
   '/prescriptions': typeof PrescriptionsRoute
   '/doctor/patients': typeof DoctorPatientsRoute
@@ -147,10 +174,13 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/admin'
     | '/appointments'
     | '/auth'
+    | '/billing'
     | '/booking'
     | '/doctor'
+    | '/front-desk'
     | '/medical-file'
     | '/prescriptions'
     | '/doctor/patients'
@@ -163,9 +193,12 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/admin'
     | '/appointments'
     | '/auth'
+    | '/billing'
     | '/booking'
+    | '/front-desk'
     | '/medical-file'
     | '/prescriptions'
     | '/doctor/patients'
@@ -178,10 +211,13 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/admin'
     | '/appointments'
     | '/auth'
+    | '/billing'
     | '/booking'
     | '/doctor'
+    | '/front-desk'
     | '/medical-file'
     | '/prescriptions'
     | '/doctor/patients'
@@ -195,10 +231,13 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdminRoute: typeof AdminRoute
   AppointmentsRoute: typeof AppointmentsRoute
   AuthRoute: typeof AuthRoute
+  BillingRoute: typeof BillingRoute
   BookingRoute: typeof BookingRoute
   DoctorRoute: typeof DoctorRouteWithChildren
+  FrontDeskRoute: typeof FrontDeskRoute
   MedicalFileRoute: typeof MedicalFileRoute
   PrescriptionsRoute: typeof PrescriptionsRoute
 }
@@ -210,6 +249,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/appointments': {
@@ -226,6 +272,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/billing': {
+      id: '/billing'
+      path: '/billing'
+      fullPath: '/billing'
+      preLoaderRoute: typeof BillingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/booking': {
       id: '/booking'
       path: '/booking'
@@ -238,6 +291,13 @@ declare module '@tanstack/react-router' {
       path: '/doctor'
       fullPath: '/doctor'
       preLoaderRoute: typeof DoctorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/front-desk': {
+      id: '/front-desk'
+      path: '/front-desk'
+      fullPath: '/front-desk'
+      preLoaderRoute: typeof FrontDeskRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/medical-file': {
@@ -331,10 +391,13 @@ const DoctorRouteWithChildren =
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdminRoute: AdminRoute,
   AppointmentsRoute: AppointmentsRoute,
   AuthRoute: AuthRoute,
+  BillingRoute: BillingRoute,
   BookingRoute: BookingRoute,
   DoctorRoute: DoctorRouteWithChildren,
+  FrontDeskRoute: FrontDeskRoute,
   MedicalFileRoute: MedicalFileRoute,
   PrescriptionsRoute: PrescriptionsRoute,
 }

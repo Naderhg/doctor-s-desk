@@ -24,7 +24,7 @@ function pct(part: number, total: number) {
   return total === 0 ? 0 : Math.round((part / total) * 100);
 }
 
-function Stat({ label, value, hint, tone }: { label: string; value: string; hint?: string; tone?: "warn" | "good" }) {
+function Stat({ label, value, hint, tone }: { label: string; value: string; hint?: string | undefined; tone?: "warn" | "good" | undefined }) {
   return (
     <div className="glass rounded-3xl p-5">
       <p className="text-xs text-muted-foreground">{label}</p>

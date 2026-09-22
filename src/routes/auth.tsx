@@ -38,6 +38,8 @@ function AuthPage() {
       const dest =
         nextUser.role === "patient" ? "/appointments" :
         nextUser.role === "admin" ? "/admin" :
+        nextUser.role === "receptionist" ? "/front-desk" :
+        nextUser.role === "cashier" ? "/billing" :
         "/doctor";
       await navigate({ to: dest });
     } catch (err) {

@@ -3,7 +3,7 @@ import { env } from "./env.js";
 
 const jwt = createRequire(import.meta.url)("jsonwebtoken") as typeof import("jsonwebtoken");
 
-export type UserRole = "patient" | "doctor" | "admin" | "receptionist";
+export type UserRole = "patient" | "doctor" | "admin" | "receptionist" | "cashier";
 
 export type TokenPayload = {
   sub: string;

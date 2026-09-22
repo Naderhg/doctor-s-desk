@@ -1,6 +1,6 @@
 import { api } from "./api";
 
-export type UserRole = "patient" | "doctor" | "admin" | "receptionist";
+export type UserRole = "patient" | "doctor" | "admin" | "receptionist" | "cashier";
 
 export type User = {
   id: string;
@@ -55,7 +55,7 @@ export function createUser(input: {
   email: string;
   phone: string;
   password: string;
-  role: "doctor" | "receptionist" | "admin";
+  role: "doctor" | "receptionist" | "admin" | "cashier";
   assignedDoctorId?: string | null;
 }) {
   return api<{ user: AdminUser }>("/auth/users", {

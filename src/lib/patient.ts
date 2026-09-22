@@ -127,7 +127,7 @@ export async function uploadAttachment(file: File) {
   const res = await fetch(`${API_URL}/medical-file/attachments`, {
     method: "POST",
     credentials: "include",
-    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
     body: form,
   });
   const data = (await res.json().catch(() => ({}))) as { error?: string; attachment?: MedicalFile["attachments"][number] };

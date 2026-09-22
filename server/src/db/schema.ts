@@ -1,6 +1,10 @@
-import { boolean, integer, jsonb, pgEnum, pgTable, text, timestamp, uuid, varchar } from "drizzle-orm/pg-core";
+import { boolean, integer, jsonb, pgEnum, pgTable, text, timestamp, uuid, varchar, type AnyPgColumn } from "drizzle-orm/pg-core";
 
-export const userRoleEnum = pgEnum("user_role", ["patient", "doctor", "admin", "receptionist"]);
+export const userRoleEnum = pgEnum("user_role", ["patient", "doctor", "admin", "receptionist", "cashier"]);
+export const departmentEnum = pgEnum("department", ["er", "opd", "ipd", "or"]);
+export const encounterStatusEnum = pgEnum("encounter_status", ["active", "discharged", "cancelled"]);
+export const invoiceStatusEnum = pgEnum("invoice_status", ["open", "partially_paid", "paid", "cancelled"]);
+export const paymentMethodEnum = pgEnum("payment_method", ["cash", "card", "insurance", "transfer"]);
 export const appointmentStatusEnum = pgEnum("appointment_status", [
   "pending_payment",
   "confirmed",
@@ -16,7 +20,9 @@ export const users = pgTable("users", {
   phone: varchar("phone", { length: 30 }),
   passwordHash: varchar("password_hash", { length: 255 }).notNull(),
   role: userRoleEnum("role").notNull().default("patient"),
-  assignedDoctorId: uuid("assigned_doctor_id").references(() => users.id),
+  assignedDoctorId: uuid("assigned_doctor_id").references((): AnyPgColumn => users.id),
+  mrn: varchar("mrn", { length: 20 }).unique(),
+  nationalId: varchar("national_id", { length: 30 }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
@@ -153,6 +159,74 @@ export const notificationTypeEnum = pgEnum("notification_type", [
   "system",
 ]);
 
+// ─── Hospital: encounters & billing ───
+
+export const encounters = pgTable("encounters", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  patientId: uuid("patient_id")
+    .notNull()
+    .references(() => users.id),
+  department: departmentEnum("department").notNull(),
+  status: encounterStatusEnum("status").notNull().default("active"),
+  chiefComplaint: text("chief_complaint").notNull().default(""),
+  triageLevel: varchar("triage_level", { length: 10 }), // red | yellow | green (ER only)
+  assignedDoctorId: uuid("assigned_doctor_id").references(() => users.id),
+  createdById: uuid("created_by_id")
+    .notNull()
+    .references(() => users.id),
+  admittedAt: timestamp("admitted_at", { withTimezone: true }).defaultNow().notNull(),
+  dischargedAt: timestamp("discharged_at", { withTimezone: true }),
+});
+
+export const services = pgTable("services", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  code: varchar("code", { length: 30 }).notNull().unique(),
+  name: varchar("name", { length: 160 }).notNull(),
+  category: varchar("category", { length: 40 }).notNull(), // consultation | lab | radiology | medication | room | procedure | other
+  price: integer("price").notNull(),
+  department: departmentEnum("department"),
+});
+
+export const invoices = pgTable("invoices", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  encounterId: uuid("encounter_id")
+    .notNull()
+    .references(() => encounters.id),
+  patientId: uuid("patient_id")
+    .notNull()
+    .references(() => users.id),
+  status: invoiceStatusEnum("status").notNull().default("open"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  closedAt: timestamp("closed_at", { withTimezone: true }),
+});
+
+export const invoiceItems = pgTable("invoice_items", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  invoiceId: uuid("invoice_id")
+    .notNull()
+    .references(() => invoices.id),
+  serviceId: uuid("service_id").references(() => services.id),
+  description: varchar("description", { length: 255 }).notNull(),
+  category: varchar("category", { length: 40 }).notNull().default("other"),
+  quantity: integer("quantity").notNull().default(1),
+  unitPrice: integer("unit_price").notNull(),
+  createdById: uuid("created_by_id").references(() => users.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const payments = pgTable("payments", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  invoiceId: uuid("invoice_id")
+    .notNull()
+    .references(() => invoices.id),
+  amount: integer("amount").notNull(),
+  method: paymentMethodEnum("method").notNull().default("cash"),
+  receivedById: uuid("received_by_id")
+    .notNull()
+    .references(() => users.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
 export const notifications = pgTable("notifications", {
   id: uuid("id").defaultRandom().primaryKey(),
   userId: uuid("user_id")
@@ -170,3 +244,6 @@ export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 export type VisitType = typeof visitTypes.$inferSelect;
 export type Appointment = typeof appointments.$inferSelect;
+export type Encounter = typeof encounters.$inferSelect;
+export type Invoice = typeof invoices.$inferSelect;
+export type Service = typeof services.$inferSelect;

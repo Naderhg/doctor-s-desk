@@ -12,9 +12,14 @@ export function SiteHeader() {
   const isDoctor = user?.role === "doctor";
   const isAdmin = user?.role === "admin";
   const isReceptionist = user?.role === "receptionist";
+  const isCashier = user?.role === "cashier";
   const isStaff = isDoctor || isAdmin || isReceptionist;
-  const links = isStaff
+  const links = isCashier
+    ? ([{ to: "/billing", label: "الحسابات" }] as const)
+    : isStaff
     ? ([...(isAdmin ? [{ to: "/admin", label: "الإدارة" } as const] : []),
+        { to: "/front-desk", label: "الاستعلامات" },
+        { to: "/billing", label: "الحسابات" },
         { to: "/doctor", label: "لوحة الدكتور" },
         { to: "/doctor/schedule", label: "الجدول" },
         { to: "/doctor/patients", label: "المرضى" },
@@ -77,7 +82,11 @@ export function SiteHeader() {
               دخول
             </Link>
           )}
-          {isStaff ? (
+          {isCashier ? (
+            <Link to="/billing" className="btn-primary px-4 py-2.5 text-sm">
+              الحسابات
+            </Link>
+          ) : isStaff ? (
             <Link to="/doctor" className="btn-primary px-4 py-2.5 text-sm">
               اللوحة
             </Link>

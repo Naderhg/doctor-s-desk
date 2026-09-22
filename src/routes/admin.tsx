@@ -21,6 +21,7 @@ const roleLabels: Record<string, string> = {
   admin: "مدير",
   doctor: "طبيب",
   receptionist: "استقبال",
+  cashier: "حسابات",
   patient: "مريض",
 };
 
@@ -112,14 +113,14 @@ function CreateUserForm({
 }: {
   pending: boolean;
   error: string | null;
-  onSubmit: (data: { name: string; email: string; phone: string; password: string; role: "doctor" | "receptionist" | "admin"; assignedDoctorId?: string | null }) => void;
+  onSubmit: (data: { name: string; email: string; phone: string; password: string; role: "doctor" | "receptionist" | "admin" | "cashier"; assignedDoctorId?: string | null }) => void;
 }) {
   const doctors = useQuery({ queryKey: ["doctors"], queryFn: getDoctors });
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState<"doctor" | "receptionist" | "admin">("doctor");
+  const [role, setRole] = useState<"doctor" | "receptionist" | "admin" | "cashier">("doctor");
   const [assignedDoctorId, setAssignedDoctorId] = useState<string>("");
 
   function submit(e: FormEvent) {
@@ -149,9 +150,10 @@ function CreateUserForm({
         </div>
         <div>
           <label className="mb-1.5 block text-xs text-muted-foreground">الدور</label>
-          <select className="field" value={role} onChange={(e) => setRole(e.target.value as "doctor" | "receptionist" | "admin")}>
+          <select className="field" value={role} onChange={(e) => setRole(e.target.value as "doctor" | "receptionist" | "admin" | "cashier")}>
             <option value="doctor">طبيب</option>
             <option value="receptionist">استقبال</option>
+            <option value="cashier">حسابات</option>
             <option value="admin">مدير</option>
           </select>
         </div>
