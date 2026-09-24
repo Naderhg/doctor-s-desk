@@ -36,21 +36,23 @@ function DoctorLayout() {
 
   return (
     <div className="relative z-10">
-      <div className="px-4 sm:px-8">
-        <nav className="glass-soft flex gap-2 overflow-x-auto rounded-2xl p-2 text-sm">
-          {tabs.map((t) => (
-            <Link
-              key={t.to}
-              to={t.to}
-              className="shrink-0 rounded-xl px-4 py-2 text-muted-foreground transition-colors hover:text-foreground"
-              activeProps={{ className: "shrink-0 rounded-xl px-4 py-2 bg-primary/15 text-foreground font-semibold" }}
-              activeOptions={{ exact: t.exact }}
-            >
-              {t.label}
-            </Link>
-          ))}
-        </nav>
-      </div>
+      {user.role !== "admin" && (
+        <div className="px-4 sm:px-8">
+          <nav className="glass-soft flex gap-2 overflow-x-auto rounded-2xl p-2 text-sm">
+            {tabs.map((t) => (
+              <Link
+                key={t.to}
+                to={t.to}
+                className="shrink-0 rounded-xl px-4 py-2 text-muted-foreground transition-colors hover:text-foreground"
+                activeProps={{ className: "shrink-0 rounded-xl px-4 py-2 bg-primary/15 text-foreground font-semibold" }}
+                activeOptions={{ exact: t.exact }}
+              >
+                {t.label}
+              </Link>
+            ))}
+          </nav>
+        </div>
+      )}
       <Outlet />
     </div>
   );

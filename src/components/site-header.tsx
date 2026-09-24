@@ -20,7 +20,7 @@ export function SiteHeader() {
     ? ([...(isAdmin ? [{ to: "/admin", label: "الإدارة" } as const] : []),
         { to: "/front-desk", label: "الاستعلامات" },
         { to: "/billing", label: "الحسابات" },
-        { to: "/doctor", label: "لوحة الدكتور" },
+        { to: "/doctor", label: "اللوحة" },
         { to: "/doctor/schedule", label: "الجدول" },
         { to: "/doctor/patients", label: "المرضى" },
         ...(isDoctor || isAdmin ? [{ to: "/doctor/reports", label: "التقارير" } as const] : []),
